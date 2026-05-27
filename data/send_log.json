@@ -1,0 +1,40 @@
+{
+  "sends": [
+    {
+      "to": "support@cartercompanycpa.com",
+      "lead": "Results",
+      "subject": "Quick question about your NYC tax clients",
+      "date": "2026-05-27T15:29:58.864043",
+      "status": "sent"
+    },
+    {
+      "to": "info@luocpapllc.com",
+      "lead": "Results",
+      "subject": "Your FAQ page tells me everything about Results' customer service load",
+      "date": "2026-05-27T15:31:35.217716",
+      "status": "sent"
+    },
+    {
+      "to": "info@howladerandco.com",
+      "lead": "Results",
+      "subject": "Quick question about Results's customer inquiries",
+      "date": "2026-05-27T15:33:44.890347",
+      "status": "sent"
+    },
+    {
+      "to": "flags@2x.webp",
+      "lead": "Results",
+      "subject": "Quick question about Results's customer inquiries",
+      "date": "2026-05-27T15:36:00.551962",
+      "status": "sent"
+    },
+    {
+      "to": "admin.mailbox@perry-company.co.uk",
+      "lead": "Results",
+      "subject": "Quick question about Results's customer inquiries",
+      "date": "2026-05-27T15:37:40.345911",
+      "status": "sent"
+    }
+  ],
+  "total": 5
+}
