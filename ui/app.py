@@ -389,40 +389,160 @@ class LeadHunterApp:
         # ── Cities card ──
         card2 = self._card(panel)
         card2.pack(fill="x", padx=30, pady=10)
-        self._label(card2, "TARGET CITIES", 11, bold=True, color="#7c3aed").pack(
-            anchor="w", padx=15, pady=(12, 4))
 
-        # Preset buttons
-        preset_frame = ctk.CTkFrame(card2, fg_color="transparent")
-        preset_frame.pack(fill="x", padx=15, pady=(0, 8))
+        # Header row with stats
+        hdr = ctk.CTkFrame(card2, fg_color="transparent")
+        hdr.pack(fill="x", padx=15, pady=(12, 4))
+        self._label(hdr, "TARGET CITIES — GLOBAL", 11, bold=True, color="#7c3aed").pack(side="left")
+        from core.locations import get_stats
+        stats = get_stats()
+        self._label(hdr,
+                    f"{stats['cities']} cities · {stats['countries']} countries · {stats['continents']} continents",
+                    10, color="#475569").pack(side="right")
 
-        for preset_name, cities in CITIES_PRESETS.items():
-            btn = ctk.CTkButton(
-                preset_frame, text=preset_name,
-                font=("Consolas", 11),
-                fg_color="#1a1a2e", hover_color="#2d2d44",
-                text_color="#94a3b8", border_width=1, border_color="#374151",
-                height=28, corner_radius=6,
-                command=lambda c=cities: self._add_cities(c)
-            )
-            btn.pack(side="left", padx=(0, 6), pady=2)
+        # ── Search box ──
+        search_row = ctk.CTkFrame(card2, fg_color="transparent")
+        search_row.pack(fill="x", padx=15, pady=(0, 6))
 
-        clear_btn = ctk.CTkButton(
-            preset_frame, text="🗑 Clear",
+        self.var_city_search = tk.StringVar()
+        search_entry = ctk.CTkEntry(
+            search_row, textvariable=self.var_city_search,
+            placeholder_text="🔍  Search city or country (e.g. 'Nigeria', 'Chicago', 'Germany')...",
+            fg_color="#1a1a2e", border_color="#7c3aed", border_width=1,
+            text_color="#e2e8f0", placeholder_text_color="#4b5563",
+            font=("Consolas", 12), height=36
+        )
+        search_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+
+        add_search_btn = ctk.CTkButton(
+            search_row, text="➕ Add Results",
+            font=("Consolas", 11),
+            fg_color="#7c3aed", hover_color="#5b21b6",
+            height=36, corner_radius=8, width=110,
+            command=self._add_search_results
+        )
+        add_search_btn.pack(side="left")
+
+        self.var_city_search.trace_add("write", lambda *a: self._update_city_search())
+
+        # Search results listbox
+        self.city_search_frame = ctk.CTkFrame(card2, fg_color="#0d0d1a",
+                                              border_width=1, border_color="#2d2d44",
+                                              corner_radius=6)
+        self.city_search_frame.pack(fill="x", padx=15, pady=(0, 6))
+
+        self.city_listbox = tk.Listbox(
+            self.city_search_frame,
+            bg="#0d0d1a", fg="#94a3b8",
+            selectbackground="#7c3aed", selectforeground="white",
+            font=("Consolas", 11), height=6,
+            borderwidth=0, highlightthickness=0,
+            activestyle="none"
+        )
+        list_sb = tk.Scrollbar(self.city_search_frame, orient="vertical",
+                               command=self.city_listbox.yview)
+        self.city_listbox.configure(yscrollcommand=list_sb.set)
+        list_sb.pack(side="right", fill="y")
+        self.city_listbox.pack(fill="both", expand=True, padx=4, pady=4)
+        self.city_listbox.bind("<Double-Button-1>", self._on_city_double_click)
+        self.city_listbox.bind("<Return>", self._on_city_double_click)
+        self.city_search_frame.pack_forget()  # Hidden until user types
+
+        # ── Continent quick-add buttons ──
+        self._label(card2, "Quick add by region:", 10, color="#475569").pack(
+            anchor="w", padx=15, pady=(4, 4))
+
+        from core.locations import LOCATIONS
+        continent_rows = [
+            list(LOCATIONS.keys())[:4],
+            list(LOCATIONS.keys())[4:],
+        ]
+        for row_items in continent_rows:
+            row_frame = ctk.CTkFrame(card2, fg_color="transparent")
+            row_frame.pack(fill="x", padx=15, pady=2)
+            for continent in row_items:
+                short = continent.split(" ", 1)[1] if " " in continent else continent
+                short = short.replace("Middle East & Central Asia", "Mid East")
+                short = short.replace("Caribbean & Central America", "Caribbean")
+                btn = ctk.CTkButton(
+                    row_frame, text=continent.split()[0] + " " + short,
+                    font=("Consolas", 10),
+                    fg_color="#1a1a2e", hover_color="#2d2d44",
+                    text_color="#94a3b8", border_width=1, border_color="#374151",
+                    height=26, corner_radius=6,
+                    command=lambda c=continent: self._add_continent(c)
+                )
+                btn.pack(side="left", padx=(0, 5))
+
+        # Country dropdown row
+        country_row = ctk.CTkFrame(card2, fg_color="transparent")
+        country_row.pack(fill="x", padx=15, pady=(6, 4))
+
+        self._label(country_row, "Add country:", 11).pack(side="left", padx=(0, 8))
+
+        all_countries = []
+        for continent, countries in LOCATIONS.items():
+            all_countries.extend(list(countries.keys()))
+
+        self.var_country_pick = tk.StringVar(value=all_countries[0])
+        country_menu = ctk.CTkComboBox(
+            country_row, variable=self.var_country_pick,
+            values=all_countries,
+            fg_color="#1a1a2e", button_color="#7c3aed",
+            button_hover_color="#a855f7", border_color="#374151",
+            text_color="#e2e8f0", font=("Consolas", 11), width=300
+        )
+        country_menu.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            country_row, text="➕ Add",
+            font=("Consolas", 11),
+            fg_color="#1a1a2e", hover_color="#2d2d44",
+            text_color="#10b981", border_width=1, border_color="#374151",
+            height=30, corner_radius=6, width=70,
+            command=self._add_country
+        ).pack(side="left", padx=(0, 6))
+
+        ctk.CTkButton(
+            country_row, text="🌍 Add ALL Cities",
+            font=("Consolas", 11),
+            fg_color="#1a1a2e", hover_color="#4c1d95",
+            text_color="#a855f7", border_width=1, border_color="#374151",
+            height=30, corner_radius=6,
+            command=self._add_all_cities
+        ).pack(side="left")
+
+        # Action buttons row
+        action_row = ctk.CTkFrame(card2, fg_color="transparent")
+        action_row.pack(fill="x", padx=15, pady=(6, 6))
+
+        ctk.CTkButton(
+            action_row, text="🗑 Clear All",
             font=("Consolas", 11),
             fg_color="#1a1a2e", hover_color="#7f1d1d",
             text_color="#ef4444", border_width=1, border_color="#374151",
             height=28, corner_radius=6,
             command=lambda: self._set_textbox(self.var_custom_cities, "")
-        )
-        clear_btn.pack(side="left", padx=(0, 6), pady=2)
+        ).pack(side="left", padx=(0, 6))
 
-        self._label(card2, "One city per line  (e.g. Chicago, IL)", 10,
-                    color="#475569").pack(anchor="w", padx=15, pady=(4, 4))
+        ctk.CTkButton(
+            action_row, text="📋 Count Cities",
+            font=("Consolas", 11),
+            fg_color="#1a1a2e", hover_color="#2d2d44",
+            text_color="#94a3b8", border_width=1, border_color="#374151",
+            height=28, corner_radius=6,
+            command=self._count_cities
+        ).pack(side="left")
+
+        self.lbl_city_count = self._label(action_row, "", 11, color="#a855f7")
+        self.lbl_city_count.pack(side="left", padx=(10, 0))
+
+        self._label(card2, "Cities queued (one per line — you can also type manually):",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(4, 2))
 
         self.var_custom_cities = ctk.CTkTextbox(
-            card2, height=130, fg_color="#1a1a2e",
-            text_color="#e2e8f0", font=("Consolas", 12),
+            card2, height=160, fg_color="#1a1a2e",
+            text_color="#e2e8f0", font=("Consolas", 11),
             border_color="#374151", border_width=1
         )
         self.var_custom_cities.pack(fill="x", padx=15, pady=(0, 12))
@@ -574,9 +694,9 @@ class LeadHunterApp:
     def _build_outreach_panel(self) -> ctk.CTkScrollableFrame:
         panel = self._make_panel()
         self._section_header(panel, "📧 Outreach Configuration",
-                             "Set up AI email generation and automated sending")
+                             "AI provider, email writing, and sending settings")
 
-        # Identity card
+        # ── Identity card ──
         card = self._card(panel)
         card.pack(fill="x", padx=30, pady=10)
         self._label(card, "YOUR IDENTITY", 11, bold=True, color="#7c3aed").pack(
@@ -593,58 +713,163 @@ class LeadHunterApp:
         self._label(fields, "Your Name", 11).grid(row=0, column=0, sticky="w", pady=3)
         self._entry(fields, self.var_your_name, "Mordecai").grid(
             row=1, column=0, sticky="ew", padx=(0, 8), pady=(0, 8))
-
         self._label(fields, "Your Website", 11).grid(row=0, column=1, sticky="w", pady=3)
         self._entry(fields, self.var_your_website, "mordecai.web.app").grid(
             row=1, column=1, sticky="ew", pady=(0, 8))
-
         self._label(fields, "Email Signature", 11).grid(row=2, column=0, sticky="w", pady=3)
         self._entry(fields, self.var_your_email_sig, "your@email.com").grid(
             row=3, column=0, columnspan=2, sticky="ew", pady=(0, 8))
 
-        # Service description
         self._label(card, "What you offer (AI uses this to write emails)", 11,
                     color="#64748b").pack(anchor="w", padx=15, pady=(4, 4))
         self.var_service_desc = ctk.CTkTextbox(
-            card, height=80, fg_color="#1a1a2e",
-            text_color="#e2e8f0", font=("Consolas", 12),
-            border_color="#374151", border_width=1
-        )
+            card, height=80, fg_color="#1a1a2e", text_color="#e2e8f0",
+            font=("Consolas", 12), border_color="#374151", border_width=1)
         self.var_service_desc.pack(fill="x", padx=15, pady=(0, 6))
         self.var_service_desc.insert("1.0",
             "I build AI chatbots and RAG systems that help businesses automate "
             "customer support, handle FAQs, and save staff time. Live in 2 weeks, "
             "no monthly SaaS fees, trained on your specific business data.")
 
-        # Email template
-        self._label(card, "Custom email template (optional — AI will adapt this)", 11,
+        self._label(card, "Custom email template (optional — AI adapts this)", 11,
                     color="#64748b").pack(anchor="w", padx=15, pady=(8, 4))
         self.var_email_template = ctk.CTkTextbox(
-            card, height=160, fg_color="#1a1a2e",
-            text_color="#e2e8f0", font=("Consolas", 12),
-            border_color="#374151", border_width=1
-        )
+            card, height=150, fg_color="#1a1a2e", text_color="#e2e8f0",
+            font=("Consolas", 12), border_color="#374151", border_width=1)
         self.var_email_template.pack(fill="x", padx=15, pady=(0, 12))
         self.var_email_template.insert("1.0",
             "Subject: Quick question about {business_name}\n\n"
             "Hi {first_name},\n\n"
             "{personalized_opener}\n\n"
-            "I build AI assistants that sit on your website and automatically answer "
-            "customer questions 24/7, trained specifically on your business information. "
-            "No generic chatbot — it knows your services, your pricing, your policies.\n\n"
+            "I build AI assistants trained on your specific business — your services, "
+            "pricing, policies — answering customer questions 24/7.\n\n"
             "Would a 10-minute call make sense this week?\n\n"
             "{your_name}\n{your_website}\n{your_email}")
 
-        # Gmail config
+        # ── AI Provider card ──
+        ai_card = self._card(panel)
+        ai_card.pack(fill="x", padx=30, pady=10)
+        self._label(ai_card, "AI EMAIL WRITER", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(ai_card,
+            "Choose which AI writes your cold emails. Each has different strengths.",
+            10, color="#475569").pack(anchor="w", padx=15, pady=(0, 10))
+
+        from core.outreach import AI_PROVIDERS
+
+        # Provider selector
+        prov_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        prov_row.pack(fill="x", padx=15, pady=(0, 8))
+        self._label(prov_row, "Provider:", 12).pack(side="left", padx=(0, 10))
+
+        self.var_ai_provider = tk.StringVar(value="Claude (Anthropic)")
+        prov_menu = ctk.CTkComboBox(
+            prov_row, variable=self.var_ai_provider,
+            values=list(AI_PROVIDERS.keys()),
+            fg_color="#1a1a2e", button_color="#7c3aed",
+            button_hover_color="#a855f7", border_color="#374151",
+            text_color="#e2e8f0", font=("Consolas", 13), width=260,
+            command=self._on_provider_change
+        )
+        prov_menu.pack(side="left")
+
+        # Model selector
+        model_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        model_row.pack(fill="x", padx=15, pady=(0, 8))
+        self._label(model_row, "Model:", 12).pack(side="left", padx=(0, 10))
+
+        self.var_ai_model = tk.StringVar(value="claude-sonnet-4-5")
+        self.ai_model_menu = ctk.CTkComboBox(
+            model_row, variable=self.var_ai_model,
+            values=AI_PROVIDERS["Claude (Anthropic)"]["models"],
+            fg_color="#1a1a2e", button_color="#7c3aed",
+            button_hover_color="#a855f7", border_color="#374151",
+            text_color="#e2e8f0", font=("Consolas", 13), width=340
+        )
+        self.ai_model_menu.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            model_row, text="🔄 Refresh Ollama",
+            font=("Consolas", 11), height=30, width=130,
+            fg_color="#1a1a2e", hover_color="#2d2d44",
+            text_color="#94a3b8", border_width=1, border_color="#374151",
+            command=self._refresh_ollama_models
+        ).pack(side="left")
+
+        # Tone selector
+        tone_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        tone_row.pack(fill="x", padx=15, pady=(0, 8))
+        self._label(tone_row, "Email Tone:", 12).pack(side="left", padx=(0, 10))
+
+        self.var_ai_tone = tk.StringVar(value="professional")
+        for tone_val, tone_label in [
+            ("professional", "💼 Professional"),
+            ("casual", "😊 Casual"),
+            ("aggressive", "⚡ Aggressive"),
+            ("friendly", "🤝 Friendly"),
+        ]:
+            ctk.CTkRadioButton(
+                tone_row, text=tone_label, variable=self.var_ai_tone,
+                value=tone_val, font=("Consolas", 11), text_color="#94a3b8",
+                fg_color="#7c3aed", radiobutton_width=14, radiobutton_height=14,
+            ).pack(side="left", padx=(0, 14))
+
+        # Ollama host
+        ollama_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        ollama_row.pack(fill="x", padx=15, pady=(0, 4))
+        self._label(ollama_row, "Ollama Host:", 11).pack(side="left", padx=(0, 8))
+        self.var_ollama_host = tk.StringVar(value="localhost:11434")
+        self._entry(ollama_row, self.var_ollama_host, "localhost:11434", width=220
+                    ).pack(side="left", padx=(0, 8))
+        self.lbl_ollama_status = self._label(ollama_row, "● not checked", 11, color="#475569")
+        self.lbl_ollama_status.pack(side="left")
+
+        ctk.CTkButton(
+            ollama_row, text="Check Ollama",
+            font=("Consolas", 11), height=28, width=110,
+            fg_color="#1a1a2e", hover_color="#2d2d44",
+            text_color="#94a3b8", border_width=1, border_color="#374151",
+            command=self._check_ollama
+        ).pack(side="left", padx=(8, 0))
+
+        # Ollama setup hint
+        self.ollama_hint = self._label(ai_card,
+            "Ollama not selected. Select 'Ollama (Local)' above to use local models.",
+            10, color="#475569")
+        self.ollama_hint.pack(anchor="w", padx=15, pady=(0, 4))
+
+        # API Key row (dynamic label)
+        key_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        key_row.pack(fill="x", padx=15, pady=(4, 4))
+        self.lbl_ai_key = self._label(key_row, "Anthropic API Key:", 11)
+        self.lbl_ai_key.pack(side="left", padx=(0, 8))
+        self.var_ai_key_outreach = tk.StringVar()
+        self.entry_ai_key = ctk.CTkEntry(
+            key_row, textvariable=self.var_ai_key_outreach,
+            show="•", fg_color="#1a1a2e", border_color="#374151",
+            text_color="#e2e8f0", font=("Consolas", 11), width=360
+        )
+        self.entry_ai_key.pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            key_row, text="🧪 Test AI",
+            font=("Consolas", 11), height=30, width=80,
+            fg_color="#5b21b6", hover_color="#4c1d95",
+            command=self._test_ai_connection
+        ).pack(side="left")
+
+        self._label(ai_card, "Keys saved here sync with the API Keys panel automatically.",
+                    10, color="#334155").pack(anchor="w", padx=15, pady=(0, 12))
+
+        # ── Gmail sending config ──
         card2 = self._card(panel)
         card2.pack(fill="x", padx=30, pady=10)
         self._label(card2, "GMAIL SENDING CONFIG", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
-
         self._label(card2,
-                    "⚠️ Use a Gmail App Password (not your real password). "
-                    "Enable 2FA first, then: myaccount.google.com → Security → App Passwords",
-                    11, color="#f59e0b").pack(anchor="w", padx=15, pady=(0, 8))
+            "⚠️ Use a Gmail App Password. Enable 2FA first: "
+            "myaccount.google.com → Security → App Passwords",
+            11, color="#f59e0b").pack(anchor="w", padx=15, pady=(0, 8))
 
         g_fields = ctk.CTkFrame(card2, fg_color="transparent")
         g_fields.pack(fill="x", padx=15, pady=(0, 8))
@@ -656,27 +881,23 @@ class LeadHunterApp:
         self._label(g_fields, "Gmail Address", 11).grid(row=0, column=0, sticky="w")
         self._entry(g_fields, self.var_gmail, "you@gmail.com").grid(
             row=1, column=0, sticky="ew", padx=(0, 8), pady=(2, 8))
-
         self._label(g_fields, "App Password (16 chars)", 11).grid(row=0, column=1, sticky="w")
         self._entry(g_fields, self.var_gmail_pass, "xxxx xxxx xxxx xxxx",
                     show="•").grid(row=1, column=1, sticky="ew", pady=(2, 8))
 
-        test_btn = ctk.CTkButton(
+        ctk.CTkButton(
             card2, text="🔌 Test Gmail Connection",
-            font=("Consolas", 12),
-            fg_color="#1a1a2e", hover_color="#064e3b",
+            font=("Consolas", 12), fg_color="#1a1a2e", hover_color="#064e3b",
             text_color="#10b981", border_width=1, border_color="#374151",
-            height=36, corner_radius=8,
-            command=self._test_gmail
-        )
-        test_btn.pack(anchor="w", padx=15, pady=(0, 8))
+            height=36, corner_radius=8, command=self._test_gmail
+        ).pack(anchor="w", padx=15, pady=(0, 8))
 
-        # Send throttle
+        # ── Sending throttle ──
         card3 = self._card(panel)
         card3.pack(fill="x", padx=30, pady=10)
         self._label(card3, "SENDING THROTTLE", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
-        self._label(card3, "Stay below Gmail's 500/day hard limit. 30-50/day is safe for cold outreach.",
+        self._label(card3, "30–50/day is safe. Gmail hard limit is 500/day.",
                     10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
 
         self.var_daily_limit = tk.DoubleVar(value=30)
@@ -690,10 +911,10 @@ class LeadHunterApp:
                          self.var_email_max_delay, 30, 600, 10, "{:.0f}s")
         ctk.CTkFrame(card3, height=12, fg_color="transparent").pack()
 
-        # AI Generate + Send controls
+        # ── Generate & Send ──
         card4 = self._card(panel)
         card4.pack(fill="x", padx=30, pady=10)
-        self._label(card4, "AI EMAIL GENERATION & SENDING", 11, bold=True, color="#7c3aed").pack(
+        self._label(card4, "GENERATE & SEND", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
 
         self.var_send_progress = tk.DoubleVar(value=0)
@@ -708,22 +929,19 @@ class LeadHunterApp:
         btn_row = ctk.CTkFrame(card4, fg_color="transparent")
         btn_row.pack(fill="x", padx=15, pady=(0, 15))
 
-        gen_btn = ctk.CTkButton(
+        ctk.CTkButton(
             btn_row, text="🤖 Generate AI Emails",
             font=("Georgia", 13, "bold"),
             fg_color="#5b21b6", hover_color="#4c1d95",
             height=44, corner_radius=10,
             command=self._generate_emails
-        )
-        gen_btn.pack(side="left", padx=(0, 10))
+        ).pack(side="left", padx=(0, 10))
 
         self.btn_start_send = ctk.CTkButton(
             btn_row, text="📤 Start Sending",
             font=("Georgia", 13, "bold"),
-            fg_color="#065f46", hover_color="#047857",
-            text_color="#34d399",
-            height=44, corner_radius=10,
-            command=self._start_send
+            fg_color="#065f46", hover_color="#047857", text_color="#34d399",
+            height=44, corner_radius=10, command=self._start_send
         )
         self.btn_start_send.pack(side="left", padx=(0, 10))
 
@@ -732,12 +950,12 @@ class LeadHunterApp:
             font=("Consolas", 12),
             fg_color="#1a1a2e", hover_color="#7f1d1d",
             text_color="#ef4444", border_width=1, border_color="#374151",
-            height=44, corner_radius=10,
-            command=self._stop_send_fn
+            height=44, corner_radius=10, command=self._stop_send_fn
         )
         self.btn_stop_send.pack(side="left")
 
         return panel
+
 
     def _build_leads_panel(self) -> ctk.CTkFrame:
         # Non-scrollable panel for the table
@@ -914,9 +1132,80 @@ class LeadHunterApp:
 
     def _add_cities(self, cities: list):
         current = self.var_custom_cities.get("1.0", "end-1c").strip()
-        new = "\n".join(cities)
-        combined = (current + "\n" + new).strip()
+        existing = set(c.strip() for c in current.split("\n") if c.strip())
+        new_cities = [c for c in cities if c not in existing]
+        combined = (current + "\n" + "\n".join(new_cities)).strip()
         self._set_textbox(self.var_custom_cities, combined)
+        try:
+            self._count_cities()
+        except:
+            pass
+
+    def _add_continent(self, continent: str):
+        from core.locations import get_continent_cities
+        cities = get_continent_cities(continent)
+        self._add_cities(cities)
+        self._log(f"Added {len(cities)} cities from {continent}", "success")
+
+    def _add_country(self):
+        from core.locations import get_country_cities
+        country = self.var_country_pick.get()
+        cities = get_country_cities(country)
+        if cities:
+            self._add_cities(cities)
+            self._log(f"Added {len(cities)} cities from {country}", "success")
+
+    def _add_all_cities(self):
+        from core.locations import get_all_cities
+        if not messagebox.askyesno("Add ALL Cities",
+            "This will add every city in the database (500+ cities across 100+ countries).\n\nProceed?"):
+            return
+        cities = get_all_cities()
+        self._add_cities(cities)
+        self._log(f"Added ALL {len(cities)} global cities!", "success")
+
+    def _add_search_results(self):
+        from core.locations import search_cities
+        query = self.var_city_search.get().strip()
+        if not query:
+            return
+        cities = search_cities(query)
+        if cities:
+            self._add_cities(cities)
+            self._log(f"Added {len(cities)} cities matching '{query}'", "success")
+        else:
+            messagebox.showinfo("No Results", f"No cities found matching '{query}'")
+
+    def _update_city_search(self):
+        from core.locations import search_cities
+        query = self.var_city_search.get().strip()
+        if len(query) < 2:
+            self.city_search_frame.pack_forget()
+            return
+        results = search_cities(query)[:30]
+        self.city_listbox.delete(0, "end")
+        if results:
+            for city in results:
+                self.city_listbox.insert("end", city)
+            self.city_search_frame.pack(fill="x", padx=15, pady=(0, 6))
+        else:
+            self.city_search_frame.pack_forget()
+
+    def _on_city_double_click(self, event):
+        selection = self.city_listbox.curselection()
+        if selection:
+            city = self.city_listbox.get(selection[0])
+            self._add_cities([city])
+            self.var_city_search.set("")
+            self.city_search_frame.pack_forget()
+
+    def _count_cities(self):
+        try:
+            cities = self._get_cities()
+            self.lbl_city_count.configure(text=f"{len(cities)} cities queued")
+        except:
+            pass
+
 
     def _get_cities(self) -> list:
         text = self.var_custom_cities.get("1.0", "end-1c").strip()
@@ -993,50 +1282,174 @@ class LeadHunterApp:
         self._stop_flag = True
         self._log("⏹ Stop requested...", "warning")
 
+    # ─── AI Provider Methods ─────────────────────────────────────────
+
+    def _on_provider_change(self, provider: str):
+        from core.outreach import AI_PROVIDERS
+        info = AI_PROVIDERS.get(provider, {})
+        models = info.get("models", [])
+
+        if provider == "Ollama (Local)":
+            # Try to fetch live models
+            models = self._get_ollama_models_list()
+            self.ollama_hint.configure(
+                text="💡 Ollama selected. Make sure 'ollama serve' is running. Pull models with: ollama pull llama3.2",
+                text_color="#f59e0b"
+            )
+        else:
+            self.ollama_hint.configure(
+                text=f"Get API key: {info.get('key_url', '')}",
+                text_color="#475569"
+            )
+
+        if models:
+            self.ai_model_menu.configure(values=models)
+            recommended = info.get("recommended", models[0])
+            self.var_ai_model.set(recommended)
+        else:
+            self.ai_model_menu.configure(values=["(no models found — is Ollama running?)"])
+            self.var_ai_model.set("(no models found — is Ollama running?)")
+
+        key_label = info.get("key_label", "API Key:")
+        self.lbl_ai_key.configure(text=key_label + ":")
+
+    def _get_ollama_models_list(self) -> list:
+        from core.outreach import get_ollama_models
+        host = self.var_ollama_host.get().strip() or "localhost:11434"
+        models = get_ollama_models(host)
+        if models:
+            self._log(f"🦙 Ollama: found {len(models)} local models", "success")
+            self.lbl_ollama_status.configure(text=f"● {len(models)} models", text_color="#10b981")
+        else:
+            self._log("⚠️ Ollama: no models found. Is 'ollama serve' running?", "warning")
+            self.lbl_ollama_status.configure(text="● not running", text_color="#ef4444")
+        return models
+
+    def _refresh_ollama_models(self):
+        models = self._get_ollama_models_list()
+        if models:
+            self.ai_model_menu.configure(values=models)
+            self.var_ai_model.set(models[0])
+            messagebox.showinfo("Ollama Models", f"Found {len(models)} models:\n\n" + "\n".join(models))
+        else:
+            messagebox.showerror("Ollama Not Found",
+                "Could not connect to Ollama.\n\n"
+                "Make sure Ollama is installed and running:\n"
+                "  ollama serve\n\n"
+                "Install: https://ollama.ai")
+
+    def _check_ollama(self):
+        from core.outreach import check_ollama_running, get_ollama_models
+        host = self.var_ollama_host.get().strip() or "localhost:11434"
+        running = check_ollama_running(host)
+        if running:
+            models = get_ollama_models(host)
+            self.lbl_ollama_status.configure(
+                text=f"● running · {len(models)} models", text_color="#10b981")
+            self._log(f"🦙 Ollama running at {host} — {len(models)} models available", "success")
+        else:
+            self.lbl_ollama_status.configure(text="● not running", text_color="#ef4444")
+            self._log(f"❌ Ollama not reachable at {host}. Run: ollama serve", "error")
+
+    def _test_ai_connection(self):
+        self._log("🧪 Testing AI connection...", "info")
+
+        def run():
+            from core.outreach import AIPersonalizer
+            p = AIPersonalizer(
+                provider=self.var_ai_provider.get(),
+                model=self.var_ai_model.get(),
+                api_key=self.var_ai_key_outreach.get().strip() or self.var_anthropic_key.get().strip(),
+                ollama_host=self.var_ollama_host.get().strip(),
+                your_name=self.var_your_name.get(),
+                your_website=self.var_your_website.get(),
+                your_email=self.var_your_email_sig.get(),
+                service_description=self.var_service_desc.get("1.0", "end-1c"),
+                tone=self.var_ai_tone.get(),
+            )
+            ok, msg = p.test_connection()
+            if ok:
+                self._log(f"✅ AI test passed ({self.var_ai_provider.get()} / {self.var_ai_model.get()})", "success")
+                messagebox.showinfo("AI Test", msg)
+            else:
+                self._log(f"❌ AI test failed: {msg}", "error")
+                messagebox.showerror("AI Test Failed", msg)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _get_active_api_key(self) -> str:
+        """Get the right API key based on selected provider"""
+        # Check outreach panel key first, fall back to keys panel
+        outreach_key = self.var_ai_key_outreach.get().strip()
+        if outreach_key:
+            return outreach_key
+        provider = self.var_ai_provider.get()
+        if provider == "Claude (Anthropic)":
+            return self.var_anthropic_key.get().strip()
+        elif provider == "ChatGPT (OpenAI)":
+            return getattr(self, 'var_openai_key', tk.StringVar()).get().strip()
+        elif provider == "Gemini (Google)":
+            return getattr(self, 'var_gemini_key', tk.StringVar()).get().strip()
+        return ""
+
     def _generate_emails(self):
         if not self.leads:
-            messagebox.showwarning("No Leads", "Scrape leads first before generating emails.")
+            messagebox.showwarning("No Leads", "Scrape leads first.")
             return
 
-        api_key = self.var_anthropic_key.get().strip()
         min_score = int(self.var_min_score.get())
         targets = [l for l in self.leads if l.score >= min_score and l.status == "new"]
 
         if not targets:
             messagebox.showinfo("No Targets",
-                                f"No leads with score ≥ {min_score} and status 'new'.")
+                f"No new leads with score >= {min_score}.")
             return
 
-        self._log(f"🤖 Generating AI emails for {len(targets)} leads...", "info")
+        provider = self.var_ai_provider.get()
+        model = self.var_ai_model.get()
+        api_key = self._get_active_api_key()
+
+        if provider != "Ollama (Local)" and not api_key:
+            messagebox.showerror("No API Key",
+                f"Enter your {provider} API key in the Outreach panel or API Keys panel.")
+            return
+
+        self._log(f"🤖 Generating emails with {provider} / {model} for {len(targets)} leads...", "info")
+        self.lbl_send_status.configure(text=f"Generating with {provider}...")
 
         from core.outreach import AIPersonalizer
 
         def run():
             personalizer = AIPersonalizer(
+                provider=provider,
+                model=model,
                 api_key=api_key,
+                ollama_host=self.var_ollama_host.get().strip(),
                 your_name=self.var_your_name.get(),
                 your_website=self.var_your_website.get(),
                 your_email=self.var_your_email_sig.get(),
                 service_description=self.var_service_desc.get("1.0", "end-1c"),
                 email_template=self.var_email_template.get("1.0", "end-1c"),
+                tone=self.var_ai_tone.get(),
             )
 
             for i, lead in enumerate(targets):
                 try:
                     lead.ai_email_draft = personalizer.generate_email(lead)
-                    self._log(f"  ✍️ Email ready for {lead.name}", "success")
+                    self._log(f"  ✍️ [{provider}] Email ready for {lead.name}", "success")
                 except Exception as e:
                     self._log(f"  ⚠️ Failed for {lead.name}: {e}", "warning")
 
-                progress = (i + 1) / len(targets)
                 self.lbl_send_status.configure(
-                    text=f"Generating... {i+1}/{len(targets)}")
+                    text=f"Generating... {i+1}/{len(targets)} [{provider}]")
 
-            self._log(f"✅ Email generation complete for {len(targets)} leads", "success")
-            self.lbl_send_status.configure(text=f"✅ {len(targets)} emails ready to send")
+            self._log(f"✅ Done! {len(targets)} emails generated by {provider} / {model}", "success")
+            self.lbl_send_status.configure(
+                text=f"✅ {len(targets)} emails ready ({provider} / {model})")
             self._refresh_leads_table()
 
         threading.Thread(target=run, daemon=True).start()
+
 
     def _start_send(self):
         gmail = self.var_gmail.get().strip()
