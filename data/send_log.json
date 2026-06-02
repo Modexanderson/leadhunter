@@ -34,7 +34,154 @@
       "subject": "Quick question about Results's customer inquiries",
       "date": "2026-05-27T15:37:40.345911",
       "status": "sent"
+    },
+    {
+      "to": "nom@exemple.com",
+      "lead": "Carvista",
+      "subject": "Quick question about Carvista",
+      "date": "2026-05-29T23:08:56.626089",
+      "status": "sent"
+    },
+    {
+      "to": "lovelyauto@hotmail.ca",
+      "lead": "Lovely Auto Sales - Used car sales in Hamilton, Ontario, Canada",
+      "subject": "Quick question about Lovely Auto Sales - Used car sales in Hamilton, Ontario, Canada",
+      "date": "2026-05-29T23:10:22.030607",
+      "status": "sent"
+    },
+    {
+      "to": "nom@exemple.com",
+      "lead": "Otto's Auto Sales",
+      "subject": "Quick question about Otto's Auto Sales",
+      "date": "2026-05-29T23:12:39.043402",
+      "status": "sent"
+    },
+    {
+      "to": "atlasautomotive07@gmail.com",
+      "lead": "Atlas Automotive",
+      "subject": "Quick question about Atlas Automotive",
+      "date": "2026-05-29T23:14:45.305565",
+      "status": "sent"
+    },
+    {
+      "to": "nom@exemple.com",
+      "lead": "Most Wanted Cars, Kitchener",
+      "subject": "Quick question about Most Wanted Cars, Kitchener",
+      "date": "2026-05-29T23:16:39.994903",
+      "status": "sent"
+    },
+    {
+      "to": "ucdoffice@gmail.com",
+      "lead": "Used Car Depot Inc",
+      "subject": "Quick question about Used Car Depot Inc",
+      "date": "2026-05-29T23:18:32.740962",
+      "status": "sent"
+    },
+    {
+      "to": "info@porscheofhalifax.com",
+      "lead": "Porsche of Halifax",
+      "subject": "Quick question about Porsche of Halifax",
+      "date": "2026-05-29T23:20:23.233012",
+      "status": "sent"
+    },
+    {
+      "to": "nom@exemple.com",
+      "lead": "Campus Auto Group",
+      "subject": "Quick question about Campus Auto Group",
+      "date": "2026-05-29T23:21:49.147452",
+      "status": "sent"
+    },
+    {
+      "to": "nom@exemple.com",
+      "lead": "Jim Pattison Toyota Victoria",
+      "subject": "Quick question about Jim Pattison Toyota Victoria",
+      "date": "2026-05-29T23:23:56.741387",
+      "status": "sent"
+    },
+    {
+      "to": "nom@exemple.com",
+      "lead": "Cars 'R' Us Ltd",
+      "subject": "Quick question about Cars 'R' Us Ltd",
+      "date": "2026-05-29T23:25:57.786833",
+      "status": "sent"
+    },
+    {
+      "to": "sf.auto1234@gmail.com",
+      "lead": "SF AUTO",
+      "subject": "Quick question about SF AUTO",
+      "date": "2026-05-29T23:27:58.921579",
+      "status": "sent"
+    },
+    {
+      "to": "info@autoweltschweiz.ch",
+      "lead": "Autowelt Schweiz AG",
+      "subject": "Quick question about Autowelt Schweiz AG",
+      "date": "2026-05-29T23:29:22.396660",
+      "status": "sent"
+    },
+    {
+      "to": "info@autosteiner.ch",
+      "lead": "Auto Steiner Z\u00fcrich AG",
+      "subject": "Quick question about Auto Steiner Z\u00fcrich AG",
+      "date": "2026-05-29T23:31:43.000066",
+      "status": "sent"
+    },
+    {
+      "to": "verkauf@a-h.ch",
+      "lead": "Auto H\u00f6ngg Z\u00fcrich",
+      "subject": "Quick question about Auto H\u00f6ngg Z\u00fcrich",
+      "date": "2026-05-29T23:33:52.005431",
+      "status": "sent"
+    },
+    {
+      "to": "aubrugg@x-cars.ch",
+      "lead": "Aubrugg Auto Occasionen Z\u00fcrich",
+      "subject": "Quick question about Aubrugg Auto Occasionen Z\u00fcrich",
+      "date": "2026-05-29T23:35:34.221786",
+      "status": "sent"
+    },
+    {
+      "to": "info@allmendautomobile.ch",
+      "lead": "Allmend Automobile AG",
+      "subject": "Quick question about Allmend Automobile AG",
+      "date": "2026-05-29T23:37:00.220806",
+      "status": "sent"
+    },
+    {
+      "to": "ines.naegeli@auto-zuerich.ch",
+      "lead": "Auto Z\u00fcrich Messe",
+      "subject": "Quick question about Auto Z\u00fcrich Messe",
+      "date": "2026-05-29T23:38:59.164057",
+      "status": "sent"
+    },
+    {
+      "to": "noSub_enerpriserentalcar@lexisnexis.com",
+      "lead": "Enterprise Rent-A-Car",
+      "subject": "Quick question about Enterprise Rent-A-Car",
+      "date": "2026-05-29T23:41:15.919906",
+      "status": "sent"
+    },
+    {
+      "to": "hanacars@naver.com",
+      "lead": "\ub300\uad6c\uc911\uace0\ucc28 \ud558\ub098\uce74\uc988",
+      "subject": "Quick question about \ub300\uad6c\uc911\uace0\ucc28 \ud558\ub098\uce74\uc988",
+      "date": "2026-05-29T23:43:29.042863",
+      "status": "sent"
+    },
+    {
+      "to": "official@entire.co.kr",
+      "lead": "\ub79c\ub4dc\ub85c\ubc84 \ub9ac\ud14c\uc77c\ub7ec \uc778\ud0c0\uc774\uc5b4\ubaa8\ud130\uc2a4",
+      "subject": "Quick question about \ub79c\ub4dc\ub85c\ubc84 \ub9ac\ud14c\uc77c\ub7ec \uc778\ud0c0\uc774\uc5b4\ubaa8\ud130\uc2a4",
+      "date": "2026-05-29T23:45:31.208261",
+      "status": "sent"
+    },
+    {
+      "to": "jl@jlrmotors.co.kr",
+      "lead": "\ub79c\ub4dc\ub85c\ubc84 JL \ubaa8\ud130\uc2a4",
+      "subject": "Quick question about \ub79c\ub4dc\ub85c\ubc84 JL \ubaa8\ud130\uc2a4",
+      "date": "2026-05-29T23:47:36.752731",
+      "status": "sent"
     }
   ],
-  "total": 5
+  "total": 26
 }

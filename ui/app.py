@@ -48,16 +48,16 @@ BUSINESS_TYPES = [
 
 # Preset cities
 CITIES_PRESETS = {
-    "🇺🇸 US - Major": ["Chicago, IL", "New York, NY", "Los Angeles, CA", "Houston, TX",
+    "\U0001f1fa\U0001f1f8 US - Major": ["Chicago, IL", "New York, NY", "Los Angeles, CA", "Houston, TX",
                         "Phoenix, AZ", "Philadelphia, PA", "San Antonio, TX", "Dallas, TX",
                         "Austin, TX", "San Diego, CA"],
-    "🇬🇧 UK - Major": ["London, UK", "Manchester, UK", "Birmingham, UK", "Leeds, UK",
+    "\U0001f1ec\U0001f1e7 UK - Major": ["London, UK", "Manchester, UK", "Birmingham, UK", "Leeds, UK",
                         "Glasgow, UK", "Liverpool, UK", "Bristol, UK", "Sheffield, UK"],
-    "🇨🇦 Canada": ["Toronto, Canada", "Vancouver, Canada", "Calgary, Canada",
+    "\U0001f1e8\U0001f1e6 Canada": ["Toronto, Canada", "Vancouver, Canada", "Calgary, Canada",
                    "Montreal, Canada", "Ottawa, Canada"],
-    "🇦🇺 Australia": ["Sydney, Australia", "Melbourne, Australia", "Brisbane, Australia",
+    "\U0001f1e6\U0001f1fa Australia": ["Sydney, Australia", "Melbourne, Australia", "Brisbane, Australia",
                        "Perth, Australia"],
-    "🇩🇪 Germany": ["Berlin, Germany", "Munich, Germany", "Hamburg, Germany",
+    "\U0001f1e9\U0001f1ea Germany": ["Berlin, Germany", "Munich, Germany", "Hamburg, Germany",
                     "Frankfurt, Germany", "Cologne, Germany"],
 }
 
@@ -67,14 +67,14 @@ CONFIG_FILE = Path("data/config.json")
 class LeadHunterApp:
     def __init__(self):
         self.root = ctk.CTk()
-        self.root.title("LeadHunter Pro — AI-Powered Lead Generation")
+        self.root.title("LeadHunter Pro \u2014 AI-Powered Lead Generation")
         self.root.geometry("1400x900")
         self.root.minsize(1100, 700)
 
         self.leads = []
         self.scraper_thread = None
         self.sender_thread = None
-        self._stop_scrape = False
+        self._scraper_engine = None
         self._stop_send = False
         self.config = self._load_config()
 
@@ -109,29 +109,40 @@ class LeadHunterApp:
     def _save_config(self):
         try:
             cfg = {
+                # API Keys & Credentials
                 "anthropic_key": self.var_anthropic_key.get(),
+                "openai_key": self.var_openai_key.get(),
+                "gemini_key": self.var_gemini_key.get(),
                 "hunter_key": self.var_hunter_key.get(),
+                "ollama_host": self.var_ollama_host.get(),
                 "gmail_address": self.var_gmail.get(),
                 "gmail_password": self.var_gmail_pass.get(),
+                # Identity
                 "your_name": self.var_your_name.get(),
                 "your_website": self.var_your_website.get(),
                 "your_email_sig": self.var_your_email_sig.get(),
                 "service_description": self.var_service_desc.get("1.0", "end-1c"),
                 "email_template": self.var_email_template.get("1.0", "end-1c"),
+                # Scrape targets
                 "business_type": self.var_business_type.get(),
                 "custom_cities": self.var_custom_cities.get("1.0", "end-1c"),
+                # Scraper settings
                 "max_per_city": self.var_max_per_city.get(),
                 "min_reviews": self.var_min_reviews.get(),
                 "max_reviews": self.var_max_reviews.get(),
                 "min_delay": self.var_min_delay.get(),
                 "max_delay": self.var_max_delay.get(),
-                "daily_email_limit": self.var_daily_limit.get(),
-                "email_min_delay": self.var_email_min_delay.get(),
-                "email_max_delay": self.var_email_max_delay.get(),
                 "headless": self.var_headless.get(),
                 "skip_with_chatbot": self.var_skip_chatbot.get(),
                 "require_email": self.var_require_email.get(),
                 "min_score": self.var_min_score.get(),
+                # Outreach settings
+                "ai_provider": self.var_ai_provider.get(),
+                "ai_model": self.var_ai_model.get(),
+                "ai_tone": self.var_ai_tone.get(),
+                "daily_email_limit": self.var_daily_limit.get(),
+                "email_min_delay": self.var_email_min_delay.get(),
+                "email_max_delay": self.var_email_max_delay.get(),
             }
             CONFIG_FILE.write_text(json.dumps(cfg, indent=2))
         except Exception as e:
@@ -139,26 +150,30 @@ class LeadHunterApp:
 
     def _restore_config(self):
         cfg = self.config
+        # API Keys & Credentials
         self._set_var(self.var_anthropic_key, cfg.get("anthropic_key", ""))
+        self._set_var(self.var_openai_key, cfg.get("openai_key", ""))
+        self._set_var(self.var_gemini_key, cfg.get("gemini_key", ""))
         self._set_var(self.var_hunter_key, cfg.get("hunter_key", ""))
+        self._set_var(self.var_ollama_host, cfg.get("ollama_host", "localhost:11434"))
         self._set_var(self.var_gmail, cfg.get("gmail_address", ""))
         self._set_var(self.var_gmail_pass, cfg.get("gmail_password", ""))
-        self._set_var(self.var_your_name, cfg.get("your_name", "Mordecai"))
-        self._set_var(self.var_your_website, cfg.get("your_website", "mordecai.web.app"))
-        self._set_var(self.var_your_email_sig, cfg.get("your_email_sig", "Mordecai.a.d@gmail.com"))
+        # Identity
+        self._set_var(self.var_your_name, cfg.get("your_name", ""))
+        self._set_var(self.var_your_website, cfg.get("your_website", ""))
+        self._set_var(self.var_your_email_sig, cfg.get("your_email_sig", ""))
         self._set_textbox(self.var_service_desc, cfg.get("service_description", ""))
         self._set_textbox(self.var_email_template, cfg.get("email_template", ""))
+        # Scrape targets
         if cfg.get("business_type"):
             self.var_business_type.set(cfg["business_type"])
         self._set_textbox(self.var_custom_cities, cfg.get("custom_cities", ""))
+        # Scraper settings
         self._set_slider(self.var_max_per_city, cfg.get("max_per_city", 20))
         self._set_slider(self.var_min_reviews, cfg.get("min_reviews", 0))
         self._set_slider(self.var_max_reviews, cfg.get("max_reviews", 300))
         self._set_slider(self.var_min_delay, cfg.get("min_delay", 1.5))
         self._set_slider(self.var_max_delay, cfg.get("max_delay", 4.0))
-        self._set_slider(self.var_daily_limit, cfg.get("daily_email_limit", 30))
-        self._set_slider(self.var_email_min_delay, cfg.get("email_min_delay", 60))
-        self._set_slider(self.var_email_max_delay, cfg.get("email_max_delay", 120))
         if "headless" in cfg:
             self.var_headless.set(cfg["headless"])
         if "skip_with_chatbot" in cfg:
@@ -166,6 +181,17 @@ class LeadHunterApp:
         if "require_email" in cfg:
             self.var_require_email.set(cfg["require_email"])
         self._set_slider(self.var_min_score, cfg.get("min_score", 40))
+        # Outreach settings
+        if cfg.get("ai_provider"):
+            self.var_ai_provider.set(cfg["ai_provider"])
+            self._on_provider_change(cfg["ai_provider"])
+        if cfg.get("ai_model"):
+            self.var_ai_model.set(cfg["ai_model"])
+        if cfg.get("ai_tone"):
+            self.var_ai_tone.set(cfg["ai_tone"])
+        self._set_slider(self.var_daily_limit, cfg.get("daily_email_limit", 30))
+        self._set_slider(self.var_email_min_delay, cfg.get("email_min_delay", 60))
+        self._set_slider(self.var_email_max_delay, cfg.get("email_max_delay", 120))
 
     def _set_var(self, var, value):
         try:
@@ -196,8 +222,8 @@ class LeadHunterApp:
         """Write to the log panel in the UI"""
         try:
             timestamp = datetime.now().strftime("%H:%M:%S")
-            icons = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌"}
-            icon = icons.get(level, "•")
+            icons = {"info": "\u2139\ufe0f", "success": "\u2705", "warning": "\u26a0\ufe0f", "error": "\u274c"}
+            icon = icons.get(level, "\u2022")
             formatted = f"[{timestamp}] {icon} {msg}\n"
 
             self.log_box.configure(state="normal")
@@ -226,7 +252,7 @@ class LeadHunterApp:
         logo_frame = ctk.CTkFrame(sidebar, fg_color="transparent")
         logo_frame.pack(pady=(25, 5), padx=15, fill="x")
 
-        ctk.CTkLabel(logo_frame, text="⚡ LeadHunter", font=("Georgia", 20, "bold"),
+        ctk.CTkLabel(logo_frame, text="\u26a1 LeadHunter", font=("Georgia", 20, "bold"),
                      text_color="#a855f7").pack(anchor="w")
         ctk.CTkLabel(logo_frame, text="Pro Edition", font=("Georgia", 11),
                      text_color="#475569").pack(anchor="w")
@@ -236,12 +262,12 @@ class LeadHunterApp:
         # Nav buttons
         self.nav_buttons = {}
         nav_items = [
-            ("🎯  Scrape Targets", "scrape"),
-            ("⚙️  Scraper Settings", "settings"),
-            ("📧  Outreach", "outreach"),
-            ("📊  Leads Table", "leads"),
-            ("📝  Activity Log", "log"),
-            ("🔑  API Keys", "keys"),
+            ("\U0001f3af  Scrape Targets", "scrape"),
+            ("\u2699\ufe0f  Scraper Settings", "settings"),
+            ("\U0001f4e7  Outreach", "outreach"),
+            ("\U0001f4ca  Leads Table", "leads"),
+            ("\U0001f4dd  Activity Log", "log"),
+            ("\U0001f511  API Keys", "keys"),
         ]
 
         for label, key in nav_items:
@@ -268,7 +294,7 @@ class LeadHunterApp:
         self.lbl_stats.pack(padx=15, anchor="w")
 
         # Version
-        ctk.CTkLabel(sidebar, text="v1.0 | mordecai.web.app",
+        ctk.CTkLabel(sidebar, text="v1.1 | mordecai.web.app",
                      font=("Consolas", 10), text_color="#334155").pack(
             side="bottom", pady=10)
 
@@ -362,9 +388,10 @@ class LeadHunterApp:
     # ─────────────────────────── PANELS ────────────────────────────
 
     def _build_scrape_panel(self) -> ctk.CTkScrollableFrame:
+        """Scrape Targets - focused on WHAT to scrape and WHERE"""
         panel = self._make_panel()
 
-        self._section_header(panel, "🎯 Target Configuration",
+        self._section_header(panel, "\U0001f3af Target Configuration",
                              "Define what businesses to hunt and where")
 
         # ── Business Type card ──
@@ -393,11 +420,11 @@ class LeadHunterApp:
         # Header row with stats
         hdr = ctk.CTkFrame(card2, fg_color="transparent")
         hdr.pack(fill="x", padx=15, pady=(12, 4))
-        self._label(hdr, "TARGET CITIES — GLOBAL", 11, bold=True, color="#7c3aed").pack(side="left")
+        self._label(hdr, "TARGET CITIES \u2014 GLOBAL", 11, bold=True, color="#7c3aed").pack(side="left")
         from core.locations import get_stats
         stats = get_stats()
         self._label(hdr,
-                    f"{stats['cities']} cities · {stats['countries']} countries · {stats['continents']} continents",
+                    f"{stats['cities']} cities \u00b7 {stats['countries']} countries \u00b7 {stats['continents']} continents",
                     10, color="#475569").pack(side="right")
 
         # ── Search box ──
@@ -407,7 +434,7 @@ class LeadHunterApp:
         self.var_city_search = tk.StringVar()
         search_entry = ctk.CTkEntry(
             search_row, textvariable=self.var_city_search,
-            placeholder_text="🔍  Search city or country (e.g. 'Nigeria', 'Chicago', 'Germany')...",
+            placeholder_text="\U0001f50d  Search city or country (e.g. 'Nigeria', 'Chicago', 'Germany')...",
             fg_color="#1a1a2e", border_color="#7c3aed", border_width=1,
             text_color="#e2e8f0", placeholder_text_color="#4b5563",
             font=("Consolas", 12), height=36
@@ -415,7 +442,7 @@ class LeadHunterApp:
         search_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
 
         add_search_btn = ctk.CTkButton(
-            search_row, text="➕ Add Results",
+            search_row, text="\u2795 Add Results",
             font=("Consolas", 11),
             fg_color="#7c3aed", hover_color="#5b21b6",
             height=36, corner_radius=8, width=110,
@@ -495,7 +522,7 @@ class LeadHunterApp:
         country_menu.pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            country_row, text="➕ Add",
+            country_row, text="\u2795 Add",
             font=("Consolas", 11),
             fg_color="#1a1a2e", hover_color="#2d2d44",
             text_color="#10b981", border_width=1, border_color="#374151",
@@ -504,7 +531,7 @@ class LeadHunterApp:
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            country_row, text="🌍 Add ALL Cities",
+            country_row, text="\U0001f30d Add ALL Cities",
             font=("Consolas", 11),
             fg_color="#1a1a2e", hover_color="#4c1d95",
             text_color="#a855f7", border_width=1, border_color="#374151",
@@ -517,7 +544,7 @@ class LeadHunterApp:
         action_row.pack(fill="x", padx=15, pady=(6, 6))
 
         ctk.CTkButton(
-            action_row, text="🗑 Clear All",
+            action_row, text="\U0001f5d1 Clear All",
             font=("Consolas", 11),
             fg_color="#1a1a2e", hover_color="#7f1d1d",
             text_color="#ef4444", border_width=1, border_color="#374151",
@@ -526,7 +553,7 @@ class LeadHunterApp:
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            action_row, text="📋 Count Cities",
+            action_row, text="\U0001f4cb Count Cities",
             font=("Consolas", 11),
             fg_color="#1a1a2e", hover_color="#2d2d44",
             text_color="#94a3b8", border_width=1, border_color="#374151",
@@ -537,7 +564,7 @@ class LeadHunterApp:
         self.lbl_city_count = self._label(action_row, "", 11, color="#a855f7")
         self.lbl_city_count.pack(side="left", padx=(10, 0))
 
-        self._label(card2, "Cities queued (one per line — you can also type manually):",
+        self._label(card2, "Cities queued (one per line \u2014 you can also type manually):",
                     10, color="#475569").pack(anchor="w", padx=15, pady=(4, 2))
 
         self.var_custom_cities = ctk.CTkTextbox(
@@ -546,44 +573,6 @@ class LeadHunterApp:
             border_color="#374151", border_width=1
         )
         self.var_custom_cities.pack(fill="x", padx=15, pady=(0, 12))
-
-        # ── Volume card ──
-        card3 = self._card(panel)
-        card3.pack(fill="x", padx=30, pady=10)
-        self._label(card3, "VOLUME SETTINGS", 11, bold=True, color="#7c3aed").pack(
-            anchor="w", padx=15, pady=(12, 8))
-
-        self.var_max_per_city = tk.DoubleVar(value=20)
-        self.var_min_reviews = tk.DoubleVar(value=0)
-        self.var_max_reviews = tk.DoubleVar(value=300)
-
-        self._slider_row(card3, "Max results per city", self.var_max_per_city, 5, 100, 5)
-        self._slider_row(card3, "Min review count", self.var_min_reviews, 0, 100, 1)
-        self._slider_row(card3, "Max review count (bigger = too corporate)",
-                         self.var_max_reviews, 50, 2000, 50)
-
-        ctk.CTkFrame(card3, height=1, fg_color="#2d2d44").pack(fill="x", padx=15, pady=8)
-
-        # Toggles
-        toggle_frame = ctk.CTkFrame(card3, fg_color="transparent")
-        toggle_frame.pack(fill="x", padx=15, pady=(0, 12))
-
-        self.var_headless = tk.BooleanVar(value=True)
-        self.var_skip_chatbot = tk.BooleanVar(value=True)
-        self.var_require_email = tk.BooleanVar(value=False)
-
-        ctk.CTkSwitch(toggle_frame, text="Run browser headless (invisible)",
-                      variable=self.var_headless,
-                      font=("Consolas", 12), text_color="#94a3b8",
-                      button_color="#7c3aed").pack(anchor="w", pady=3)
-        ctk.CTkSwitch(toggle_frame, text="Skip businesses that already have a chatbot",
-                      variable=self.var_skip_chatbot,
-                      font=("Consolas", 12), text_color="#94a3b8",
-                      button_color="#7c3aed").pack(anchor="w", pady=3)
-        ctk.CTkSwitch(toggle_frame, text="Only keep leads with found email",
-                      variable=self.var_require_email,
-                      font=("Consolas", 12), text_color="#94a3b8",
-                      button_color="#7c3aed").pack(anchor="w", pady=3)
 
         # ── Launch card ──
         launch_card = self._card(panel)
@@ -604,7 +593,7 @@ class LeadHunterApp:
         btn_row.pack(fill="x", padx=15, pady=(0, 15))
 
         self.btn_start_scrape = ctk.CTkButton(
-            btn_row, text="🚀  START HUNTING",
+            btn_row, text="\U0001f680  START HUNTING",
             font=("Georgia", 14, "bold"),
             fg_color="#7c3aed", hover_color="#5b21b6",
             height=46, corner_radius=10,
@@ -613,7 +602,7 @@ class LeadHunterApp:
         self.btn_start_scrape.pack(side="left", padx=(0, 10))
 
         self.btn_stop_scrape = ctk.CTkButton(
-            btn_row, text="⏹ Stop",
+            btn_row, text="\u23f9 Stop",
             font=("Consolas", 13),
             fg_color="#1a1a2e", hover_color="#7f1d1d",
             text_color="#ef4444", border_width=1, border_color="#374151",
@@ -623,7 +612,7 @@ class LeadHunterApp:
         self.btn_stop_scrape.pack(side="left")
 
         export_btn = ctk.CTkButton(
-            btn_row, text="💾 Export Leads",
+            btn_row, text="\U0001f4be Export Leads",
             font=("Consolas", 13),
             fg_color="#1a1a2e", hover_color="#064e3b",
             text_color="#10b981", border_width=1, border_color="#374151",
@@ -635,66 +624,124 @@ class LeadHunterApp:
         return panel
 
     def _build_settings_panel(self) -> ctk.CTkScrollableFrame:
+        """Scraper Settings - all scraping behavior, filters, and tuning"""
         panel = self._make_panel()
-        self._section_header(panel, "⚙️ Scraper Settings", "Fine-tune anti-detection and behavior")
+        self._section_header(panel, "\u2699\ufe0f Scraper Settings",
+                             "Fine-tune scraping behavior, filters, and anti-detection")
 
-        # Delays
-        card = self._card(panel)
-        card.pack(fill="x", padx=30, pady=10)
-        self._label(card, "SCRAPING DELAYS (seconds)", 11, bold=True, color="#7c3aed").pack(
+        # ── Volume Settings ──
+        card_vol = self._card(panel)
+        card_vol.pack(fill="x", padx=30, pady=10)
+        self._label(card_vol, "VOLUME SETTINGS", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
-        self._label(card, "Longer delays = lower detection risk", 10, color="#475569").pack(
-            anchor="w", padx=15, pady=(0, 8))
+        self._label(card_vol, "Control how many results to scrape per city",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
+
+        self.var_max_per_city = tk.DoubleVar(value=20)
+        self._slider_row(card_vol, "Max results per city", self.var_max_per_city, 5, 100, 5)
+        ctk.CTkFrame(card_vol, height=12, fg_color="transparent").pack()
+
+        # ── Review Filters ──
+        card_rev = self._card(panel)
+        card_rev.pack(fill="x", padx=30, pady=10)
+        self._label(card_rev, "REVIEW FILTERS", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(card_rev, "Filter businesses by Google review count",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
+
+        self.var_min_reviews = tk.DoubleVar(value=0)
+        self.var_max_reviews = tk.DoubleVar(value=300)
+        self._slider_row(card_rev, "Min review count", self.var_min_reviews, 0, 100, 1)
+        self._slider_row(card_rev, "Max review count (bigger = too corporate)",
+                         self.var_max_reviews, 50, 2000, 50)
+        ctk.CTkFrame(card_rev, height=12, fg_color="transparent").pack()
+
+        # ── Scraping Behavior ──
+        card_behav = self._card(panel)
+        card_behav.pack(fill="x", padx=30, pady=10)
+        self._label(card_behav, "SCRAPING BEHAVIOR", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(card_behav, "Toggle scraping options and lead filters",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
+
+        toggle_frame = ctk.CTkFrame(card_behav, fg_color="transparent")
+        toggle_frame.pack(fill="x", padx=15, pady=(0, 12))
+
+        self.var_headless = tk.BooleanVar(value=True)
+        self.var_skip_chatbot = tk.BooleanVar(value=True)
+        self.var_require_email = tk.BooleanVar(value=False)
+
+        ctk.CTkSwitch(toggle_frame, text="Run browser headless (invisible)",
+                      variable=self.var_headless,
+                      font=("Consolas", 12), text_color="#94a3b8",
+                      button_color="#7c3aed").pack(anchor="w", pady=3)
+        ctk.CTkSwitch(toggle_frame, text="Skip businesses that already have a chatbot",
+                      variable=self.var_skip_chatbot,
+                      font=("Consolas", 12), text_color="#94a3b8",
+                      button_color="#7c3aed").pack(anchor="w", pady=3)
+        ctk.CTkSwitch(toggle_frame, text="Only keep leads with found email",
+                      variable=self.var_require_email,
+                      font=("Consolas", 12), text_color="#94a3b8",
+                      button_color="#7c3aed").pack(anchor="w", pady=3)
+
+        # ── Delays ──
+        card_delay = self._card(panel)
+        card_delay.pack(fill="x", padx=30, pady=10)
+        self._label(card_delay, "ANTI-DETECTION DELAYS", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(card_delay, "Longer delays = lower detection risk. Randomized between min/max.",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
 
         self.var_min_delay = tk.DoubleVar(value=1.5)
         self.var_max_delay = tk.DoubleVar(value=4.0)
-        self._slider_row(card, "Min delay between pages", self.var_min_delay, 0.5, 10, 0.5, "{:.1f}s")
-        self._slider_row(card, "Max delay between pages", self.var_max_delay, 1.0, 15, 0.5, "{:.1f}s")
-        ctk.CTkFrame(card, height=12, fg_color="transparent").pack()
+        self._slider_row(card_delay, "Min delay between pages", self.var_min_delay, 0.5, 10, 0.5, "{:.1f}s")
+        self._slider_row(card_delay, "Max delay between pages", self.var_max_delay, 1.0, 15, 0.5, "{:.1f}s")
+        ctk.CTkFrame(card_delay, height=12, fg_color="transparent").pack()
 
-        # Lead scoring
-        card2 = self._card(panel)
-        card2.pack(fill="x", padx=30, pady=10)
-        self._label(card2, "LEAD QUALITY FILTER", 11, bold=True, color="#7c3aed").pack(
+        # ── Lead Scoring ──
+        card_score = self._card(panel)
+        card_score.pack(fill="x", padx=30, pady=10)
+        self._label(card_score, "LEAD QUALITY FILTER", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
-        self._label(card2, "Leads below minimum score are still saved but flagged red",
+        self._label(card_score, "Leads below minimum score are still saved but flagged red",
                     10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
 
         self.var_min_score = tk.DoubleVar(value=40)
-        self._slider_row(card2, "Minimum lead score to email (0-100)", self.var_min_score, 0, 100, 5)
-        ctk.CTkFrame(card2, height=12, fg_color="transparent").pack()
+        self._slider_row(card_score, "Minimum lead score to email (0-100)", self.var_min_score, 0, 100, 5)
+        ctk.CTkFrame(card_score, height=12, fg_color="transparent").pack()
 
-        # Score explanation
-        card3 = self._card(panel)
-        card3.pack(fill="x", padx=30, pady=10)
-        self._label(card3, "HOW SCORING WORKS", 11, bold=True, color="#7c3aed").pack(
+        # ── Score explanation ──
+        card_explain = self._card(panel)
+        card_explain.pack(fill="x", padx=30, pady=10)
+        self._label(card_explain, "HOW SCORING WORKS", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
 
         score_items = [
-            ("✅ Has email found", "+20"),
-            ("✅ No existing chatbot", "+15"),
-            ("✅ Has FAQ page (needs bot)", "+10"),
-            ("✅ 10–200 reviews (right size)", "+10"),
-            ("✅ Rating ≥ 4.0 (has budget)", "+5"),
-            ("✅ Has website", "+5"),
-            ("✅ WordPress (easy install)", "+5"),
-            ("❌ Already has chatbot", "-20"),
-            ("❌ 500+ reviews (too big)", "-15"),
+            ("\u2705 Has email found", "+20"),
+            ("\u2705 No existing chatbot", "+15"),
+            ("\u2705 Has FAQ page (needs bot)", "+10"),
+            ("\u2705 10\u2013200 reviews (right size)", "+10"),
+            ("\u2705 Rating \u2265 4.0 (has budget)", "+5"),
+            ("\u2705 Has website", "+5"),
+            ("\u2705 WordPress (easy install)", "+5"),
+            ("\u274c Already has chatbot", "-20"),
+            ("\u274c 500+ reviews (too big)", "-15"),
         ]
         for item, pts in score_items:
-            row = ctk.CTkFrame(card3, fg_color="transparent")
+            row = ctk.CTkFrame(card_explain, fg_color="transparent")
             row.pack(fill="x", padx=15, pady=1)
             self._label(row, item, 11).pack(side="left")
             color = "#10b981" if pts.startswith("+") else "#ef4444"
             self._label(row, pts, 11, bold=True, color=color).pack(side="right")
 
-        ctk.CTkFrame(card3, height=12, fg_color="transparent").pack()
+        ctk.CTkFrame(card_explain, height=12, fg_color="transparent").pack()
         return panel
 
     def _build_outreach_panel(self) -> ctk.CTkScrollableFrame:
+        """Outreach - identity, AI email writing, and sending"""
         panel = self._make_panel()
-        self._section_header(panel, "📧 Outreach Configuration",
-                             "AI provider, email writing, and sending settings")
+        self._section_header(panel, "\U0001f4e7 Outreach Configuration",
+                             "AI email writing, identity, and sending controls")
 
         # ── Identity card ──
         card = self._card(panel)
@@ -706,15 +753,15 @@ class LeadHunterApp:
         fields.pack(fill="x", padx=15, pady=(0, 4))
         fields.grid_columnconfigure((0, 1), weight=1)
 
-        self.var_your_name = tk.StringVar(value="Mordecai")
-        self.var_your_website = tk.StringVar(value="mordecai.web.app")
-        self.var_your_email_sig = tk.StringVar(value="Mordecai.a.d@gmail.com")
+        self.var_your_name = tk.StringVar()
+        self.var_your_website = tk.StringVar()
+        self.var_your_email_sig = tk.StringVar()
 
         self._label(fields, "Your Name", 11).grid(row=0, column=0, sticky="w", pady=3)
-        self._entry(fields, self.var_your_name, "Mordecai").grid(
+        self._entry(fields, self.var_your_name, "Your Name").grid(
             row=1, column=0, sticky="ew", padx=(0, 8), pady=(0, 8))
         self._label(fields, "Your Website", 11).grid(row=0, column=1, sticky="w", pady=3)
-        self._entry(fields, self.var_your_website, "mordecai.web.app").grid(
+        self._entry(fields, self.var_your_website, "yoursite.com").grid(
             row=1, column=1, sticky="ew", pady=(0, 8))
         self._label(fields, "Email Signature", 11).grid(row=2, column=0, sticky="w", pady=3)
         self._entry(fields, self.var_your_email_sig, "your@email.com").grid(
@@ -726,25 +773,13 @@ class LeadHunterApp:
             card, height=80, fg_color="#1a1a2e", text_color="#e2e8f0",
             font=("Consolas", 12), border_color="#374151", border_width=1)
         self.var_service_desc.pack(fill="x", padx=15, pady=(0, 6))
-        self.var_service_desc.insert("1.0",
-            "I build AI chatbots and RAG systems that help businesses automate "
-            "customer support, handle FAQs, and save staff time. Live in 2 weeks, "
-            "no monthly SaaS fees, trained on your specific business data.")
 
-        self._label(card, "Custom email template (optional — AI adapts this)", 11,
+        self._label(card, "Custom email template (optional \u2014 AI adapts this)", 11,
                     color="#64748b").pack(anchor="w", padx=15, pady=(8, 4))
         self.var_email_template = ctk.CTkTextbox(
             card, height=150, fg_color="#1a1a2e", text_color="#e2e8f0",
             font=("Consolas", 12), border_color="#374151", border_width=1)
         self.var_email_template.pack(fill="x", padx=15, pady=(0, 12))
-        self.var_email_template.insert("1.0",
-            "Subject: Quick question about {business_name}\n\n"
-            "Hi {first_name},\n\n"
-            "{personalized_opener}\n\n"
-            "I build AI assistants trained on your specific business — your services, "
-            "pricing, policies — answering customer questions 24/7.\n\n"
-            "Would a 10-minute call make sense this week?\n\n"
-            "{your_name}\n{your_website}\n{your_email}")
 
         # ── AI Provider card ──
         ai_card = self._card(panel)
@@ -752,7 +787,7 @@ class LeadHunterApp:
         self._label(ai_card, "AI EMAIL WRITER", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
         self._label(ai_card,
-            "Choose which AI writes your cold emails. Each has different strengths.",
+            "Choose which AI writes your cold emails. API keys are managed in the API Keys tab.",
             10, color="#475569").pack(anchor="w", padx=15, pady=(0, 10))
 
         from core.outreach import AI_PROVIDERS
@@ -789,7 +824,7 @@ class LeadHunterApp:
         self.ai_model_menu.pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            model_row, text="🔄 Refresh Ollama",
+            model_row, text="\U0001f504 Refresh Ollama",
             font=("Consolas", 11), height=30, width=130,
             fg_color="#1a1a2e", hover_color="#2d2d44",
             text_color="#94a3b8", border_width=1, border_color="#374151",
@@ -803,10 +838,10 @@ class LeadHunterApp:
 
         self.var_ai_tone = tk.StringVar(value="professional")
         for tone_val, tone_label in [
-            ("professional", "💼 Professional"),
-            ("casual", "😊 Casual"),
-            ("aggressive", "⚡ Aggressive"),
-            ("friendly", "🤝 Friendly"),
+            ("professional", "\U0001f4bc Professional"),
+            ("casual", "\U0001f60a Casual"),
+            ("aggressive", "\u26a1 Aggressive"),
+            ("friendly", "\U0001f91d Friendly"),
         ]:
             ctk.CTkRadioButton(
                 tone_row, text=tone_label, variable=self.var_ai_tone,
@@ -814,123 +849,59 @@ class LeadHunterApp:
                 fg_color="#7c3aed", radiobutton_width=14, radiobutton_height=14,
             ).pack(side="left", padx=(0, 14))
 
-        # Ollama host
-        ollama_row = ctk.CTkFrame(ai_card, fg_color="transparent")
-        ollama_row.pack(fill="x", padx=15, pady=(0, 4))
-        self._label(ollama_row, "Ollama Host:", 11).pack(side="left", padx=(0, 8))
-        self.var_ollama_host = tk.StringVar(value="localhost:11434")
-        self._entry(ollama_row, self.var_ollama_host, "localhost:11434", width=220
-                    ).pack(side="left", padx=(0, 8))
-        self.lbl_ollama_status = self._label(ollama_row, "● not checked", 11, color="#475569")
-        self.lbl_ollama_status.pack(side="left")
+        # Provider info hint
+        self.lbl_provider_hint = self._label(ai_card, "", 10, color="#475569")
+        self.lbl_provider_hint.pack(anchor="w", padx=15, pady=(0, 4))
 
+        # Test AI button
+        test_row = ctk.CTkFrame(ai_card, fg_color="transparent")
+        test_row.pack(fill="x", padx=15, pady=(0, 12))
         ctk.CTkButton(
-            ollama_row, text="Check Ollama",
-            font=("Consolas", 11), height=28, width=110,
-            fg_color="#1a1a2e", hover_color="#2d2d44",
-            text_color="#94a3b8", border_width=1, border_color="#374151",
-            command=self._check_ollama
-        ).pack(side="left", padx=(8, 0))
-
-        # Ollama setup hint
-        self.ollama_hint = self._label(ai_card,
-            "Ollama not selected. Select 'Ollama (Local)' above to use local models.",
-            10, color="#475569")
-        self.ollama_hint.pack(anchor="w", padx=15, pady=(0, 4))
-
-        # API Key row (dynamic label)
-        key_row = ctk.CTkFrame(ai_card, fg_color="transparent")
-        key_row.pack(fill="x", padx=15, pady=(4, 4))
-        self.lbl_ai_key = self._label(key_row, "Anthropic API Key:", 11)
-        self.lbl_ai_key.pack(side="left", padx=(0, 8))
-        self.var_ai_key_outreach = tk.StringVar()
-        self.entry_ai_key = ctk.CTkEntry(
-            key_row, textvariable=self.var_ai_key_outreach,
-            show="•", fg_color="#1a1a2e", border_color="#374151",
-            text_color="#e2e8f0", font=("Consolas", 11), width=360
-        )
-        self.entry_ai_key.pack(side="left", padx=(0, 8))
-
-        ctk.CTkButton(
-            key_row, text="🧪 Test AI",
-            font=("Consolas", 11), height=30, width=80,
+            test_row, text="\U0001f9ea Test AI Connection",
+            font=("Consolas", 12), height=34, width=180,
             fg_color="#5b21b6", hover_color="#4c1d95",
             command=self._test_ai_connection
         ).pack(side="left")
 
-        self._label(ai_card, "Keys saved here sync with the API Keys panel automatically.",
-                    10, color="#334155").pack(anchor="w", padx=15, pady=(0, 12))
-
-        # ── Gmail sending config ──
-        card2 = self._card(panel)
-        card2.pack(fill="x", padx=30, pady=10)
-        self._label(card2, "GMAIL SENDING CONFIG", 11, bold=True, color="#7c3aed").pack(
+        # ── Sending Throttle ──
+        card_throttle = self._card(panel)
+        card_throttle.pack(fill="x", padx=30, pady=10)
+        self._label(card_throttle, "SENDING THROTTLE", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
-        self._label(card2,
-            "⚠️ Use a Gmail App Password. Enable 2FA first: "
-            "myaccount.google.com → Security → App Passwords",
-            11, color="#f59e0b").pack(anchor="w", padx=15, pady=(0, 8))
-
-        g_fields = ctk.CTkFrame(card2, fg_color="transparent")
-        g_fields.pack(fill="x", padx=15, pady=(0, 8))
-        g_fields.grid_columnconfigure((0, 1), weight=1)
-
-        self.var_gmail = tk.StringVar()
-        self.var_gmail_pass = tk.StringVar()
-
-        self._label(g_fields, "Gmail Address", 11).grid(row=0, column=0, sticky="w")
-        self._entry(g_fields, self.var_gmail, "you@gmail.com").grid(
-            row=1, column=0, sticky="ew", padx=(0, 8), pady=(2, 8))
-        self._label(g_fields, "App Password (16 chars)", 11).grid(row=0, column=1, sticky="w")
-        self._entry(g_fields, self.var_gmail_pass, "xxxx xxxx xxxx xxxx",
-                    show="•").grid(row=1, column=1, sticky="ew", pady=(2, 8))
-
-        ctk.CTkButton(
-            card2, text="🔌 Test Gmail Connection",
-            font=("Consolas", 12), fg_color="#1a1a2e", hover_color="#064e3b",
-            text_color="#10b981", border_width=1, border_color="#374151",
-            height=36, corner_radius=8, command=self._test_gmail
-        ).pack(anchor="w", padx=15, pady=(0, 8))
-
-        # ── Sending throttle ──
-        card3 = self._card(panel)
-        card3.pack(fill="x", padx=30, pady=10)
-        self._label(card3, "SENDING THROTTLE", 11, bold=True, color="#7c3aed").pack(
-            anchor="w", padx=15, pady=(12, 4))
-        self._label(card3, "30–50/day is safe. Gmail hard limit is 500/day.",
+        self._label(card_throttle, "30\u201350/day is safe. Gmail hard limit is 500/day.",
                     10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
 
         self.var_daily_limit = tk.DoubleVar(value=30)
         self.var_email_min_delay = tk.DoubleVar(value=60)
         self.var_email_max_delay = tk.DoubleVar(value=120)
 
-        self._slider_row(card3, "Daily send limit", self.var_daily_limit, 5, 100, 5)
-        self._slider_row(card3, "Min delay between emails (sec)",
+        self._slider_row(card_throttle, "Daily send limit", self.var_daily_limit, 5, 100, 5)
+        self._slider_row(card_throttle, "Min delay between emails (sec)",
                          self.var_email_min_delay, 20, 300, 10, "{:.0f}s")
-        self._slider_row(card3, "Max delay between emails (sec)",
+        self._slider_row(card_throttle, "Max delay between emails (sec)",
                          self.var_email_max_delay, 30, 600, 10, "{:.0f}s")
-        ctk.CTkFrame(card3, height=12, fg_color="transparent").pack()
+        ctk.CTkFrame(card_throttle, height=12, fg_color="transparent").pack()
 
         # ── Generate & Send ──
-        card4 = self._card(panel)
-        card4.pack(fill="x", padx=30, pady=10)
-        self._label(card4, "GENERATE & SEND", 11, bold=True, color="#7c3aed").pack(
+        card_send = self._card(panel)
+        card_send.pack(fill="x", padx=30, pady=10)
+        self._label(card_send, "GENERATE & SEND", 11, bold=True, color="#7c3aed").pack(
             anchor="w", padx=15, pady=(12, 4))
 
         self.var_send_progress = tk.DoubleVar(value=0)
         self.send_progress_bar = ctk.CTkProgressBar(
-            card4, variable=self.var_send_progress,
+            card_send, variable=self.var_send_progress,
             progress_color="#10b981", fg_color="#1a1a2e")
         self.send_progress_bar.pack(fill="x", padx=15, pady=(8, 4))
 
-        self.lbl_send_status = self._label(card4, "Ready — scrape leads first", 12, color="#64748b")
+        self.lbl_send_status = self._label(card_send, "Ready \u2014 scrape leads first", 12, color="#64748b")
         self.lbl_send_status.pack(anchor="w", padx=15, pady=(0, 10))
 
-        btn_row = ctk.CTkFrame(card4, fg_color="transparent")
+        btn_row = ctk.CTkFrame(card_send, fg_color="transparent")
         btn_row.pack(fill="x", padx=15, pady=(0, 15))
 
         ctk.CTkButton(
-            btn_row, text="🤖 Generate AI Emails",
+            btn_row, text="\U0001f916 Generate AI Emails",
             font=("Georgia", 13, "bold"),
             fg_color="#5b21b6", hover_color="#4c1d95",
             height=44, corner_radius=10,
@@ -938,7 +909,7 @@ class LeadHunterApp:
         ).pack(side="left", padx=(0, 10))
 
         self.btn_start_send = ctk.CTkButton(
-            btn_row, text="📤 Start Sending",
+            btn_row, text="\U0001f4e4 Start Sending",
             font=("Georgia", 13, "bold"),
             fg_color="#065f46", hover_color="#047857", text_color="#34d399",
             height=44, corner_radius=10, command=self._start_send
@@ -946,7 +917,7 @@ class LeadHunterApp:
         self.btn_start_send.pack(side="left", padx=(0, 10))
 
         self.btn_stop_send = ctk.CTkButton(
-            btn_row, text="⏹ Stop",
+            btn_row, text="\u23f9 Stop",
             font=("Consolas", 12),
             fg_color="#1a1a2e", hover_color="#7f1d1d",
             text_color="#ef4444", border_width=1, border_color="#374151",
@@ -963,29 +934,34 @@ class LeadHunterApp:
 
         header_row = ctk.CTkFrame(panel, fg_color="transparent")
         header_row.pack(fill="x", padx=30, pady=(20, 10))
-        ctk.CTkLabel(header_row, text="📊 Leads Table",
+        ctk.CTkLabel(header_row, text="\U0001f4ca Leads Table",
                      font=("Georgia", 22, "bold"), text_color="#e2e8f0").pack(side="left")
 
         # Toolbar
         toolbar = ctk.CTkFrame(header_row, fg_color="transparent")
         toolbar.pack(side="right")
 
-        ctk.CTkButton(toolbar, text="🔄 Refresh", font=("Consolas", 12),
+        ctk.CTkButton(toolbar, text="\U0001f504 Refresh", font=("Consolas", 12),
                       fg_color="#1a1a2e", hover_color="#2d2d44", text_color="#94a3b8",
                       border_width=1, border_color="#374151", height=32,
                       command=self._refresh_leads_table).pack(side="left", padx=4)
 
-        ctk.CTkButton(toolbar, text="📋 Export CSV", font=("Consolas", 12),
+        ctk.CTkButton(toolbar, text="\U0001f4cb Export CSV", font=("Consolas", 12),
                       fg_color="#1a1a2e", hover_color="#064e3b", text_color="#10b981",
                       border_width=1, border_color="#374151", height=32,
                       command=lambda: self._export_leads("csv")).pack(side="left", padx=4)
 
-        ctk.CTkButton(toolbar, text="📊 Export Excel", font=("Consolas", 12),
+        ctk.CTkButton(toolbar, text="\U0001f4ca Export Excel", font=("Consolas", 12),
                       fg_color="#1a1a2e", hover_color="#064e3b", text_color="#10b981",
                       border_width=1, border_color="#374151", height=32,
                       command=lambda: self._export_leads("xlsx")).pack(side="left", padx=4)
 
-        ctk.CTkButton(toolbar, text="📂 Load JSON", font=("Consolas", 12),
+        ctk.CTkButton(toolbar, text="\U0001f4be Export JSON", font=("Consolas", 12),
+                      fg_color="#1a1a2e", hover_color="#064e3b", text_color="#10b981",
+                      border_width=1, border_color="#374151", height=32,
+                      command=lambda: self._export_leads("json")).pack(side="left", padx=4)
+
+        ctk.CTkButton(toolbar, text="\U0001f4c2 Load JSON", font=("Consolas", 12),
                       fg_color="#1a1a2e", hover_color="#2d2d44", text_color="#94a3b8",
                       border_width=1, border_color="#374151", height=32,
                       command=self._load_leads).pack(side="left", padx=4)
@@ -1057,10 +1033,10 @@ class LeadHunterApp:
 
         header_row = ctk.CTkFrame(panel, fg_color="transparent")
         header_row.pack(fill="x", padx=30, pady=(20, 10))
-        ctk.CTkLabel(header_row, text="📝 Activity Log",
+        ctk.CTkLabel(header_row, text="\U0001f4dd Activity Log",
                      font=("Georgia", 22, "bold"), text_color="#e2e8f0").pack(side="left")
 
-        ctk.CTkButton(header_row, text="🗑 Clear Log", font=("Consolas", 12),
+        ctk.CTkButton(header_row, text="\U0001f5d1 Clear Log", font=("Consolas", 12),
                       fg_color="#1a1a2e", hover_color="#7f1d1d", text_color="#ef4444",
                       border_width=1, border_color="#374151", height=32,
                       command=self._clear_log).pack(side="right")
@@ -1075,60 +1051,177 @@ class LeadHunterApp:
         return panel
 
     def _build_keys_panel(self) -> ctk.CTkScrollableFrame:
+        """API Keys & Credentials - single source of truth for all keys"""
         panel = self._make_panel()
-        self._section_header(panel, "🔑 API Keys & Credentials",
-                             "All keys are saved locally to data/config.json")
+        self._section_header(panel, "\U0001f511 API Keys & Credentials",
+                             "All keys and credentials in one place \u2014 saved locally to data/config.json")
 
-        card = self._card(panel)
-        card.pack(fill="x", padx=30, pady=10)
+        # ── AI Provider Keys ──
+        ai_card = self._card(panel)
+        ai_card.pack(fill="x", padx=30, pady=10)
+        self._label(ai_card, "AI PROVIDER KEYS", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(ai_card, "Enter the API key for whichever AI provider you use",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
 
-        keys = [
-            ("Anthropic API Key", "var_anthropic_key",
-             "sk-ant-...", "Required for AI email personalization"),
-            ("Hunter.io API Key", "var_hunter_key",
-             "your-hunter-key", "Optional — finds emails by domain"),
-        ]
+        # Anthropic
+        self.var_anthropic_key = tk.StringVar()
+        self._label(ai_card, "Anthropic API Key (Claude)", 12, bold=True, color="#a855f7").pack(
+            anchor="w", padx=15, pady=(8, 2))
+        self._label(ai_card, "Get key: console.anthropic.com", 10, color="#475569").pack(
+            anchor="w", padx=15, pady=(0, 4))
+        key_row_ant = ctk.CTkFrame(ai_card, fg_color="transparent")
+        key_row_ant.pack(fill="x", padx=15, pady=(0, 8))
+        self._entry(key_row_ant, self.var_anthropic_key, "sk-ant-...", show="\u2022").pack(
+            side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(key_row_ant, text="\U0001f441", width=36, height=32,
+                      fg_color="#1a1a2e", hover_color="#2d2d44", text_color="#94a3b8",
+                      border_width=1, border_color="#374151",
+                      command=lambda: self._toggle_key_visibility(key_row_ant)
+                      ).pack(side="left")
 
-        for label, var_name, placeholder, hint in keys:
-            self._label(card, label, 12, bold=True, color="#a855f7").pack(
-                anchor="w", padx=15, pady=(14, 2))
-            self._label(card, hint, 10, color="#475569").pack(anchor="w", padx=15, pady=(0, 4))
-            var = tk.StringVar()
-            setattr(self, var_name, var)
-            self._entry(card, var, placeholder, show="•").pack(
-                fill="x", padx=15, pady=(0, 4))
+        # OpenAI
+        self.var_openai_key = tk.StringVar()
+        self._label(ai_card, "OpenAI API Key (ChatGPT)", 12, bold=True, color="#a855f7").pack(
+            anchor="w", padx=15, pady=(8, 2))
+        self._label(ai_card, "Get key: platform.openai.com/api-keys", 10, color="#475569").pack(
+            anchor="w", padx=15, pady=(0, 4))
+        key_row_oai = ctk.CTkFrame(ai_card, fg_color="transparent")
+        key_row_oai.pack(fill="x", padx=15, pady=(0, 8))
+        self._entry(key_row_oai, self.var_openai_key, "sk-...", show="\u2022").pack(
+            side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(key_row_oai, text="\U0001f441", width=36, height=32,
+                      fg_color="#1a1a2e", hover_color="#2d2d44", text_color="#94a3b8",
+                      border_width=1, border_color="#374151",
+                      command=lambda: self._toggle_key_visibility(key_row_oai)
+                      ).pack(side="left")
 
-            def make_toggle(v):
-                def toggle():
-                    entries = card.winfo_children()
-                    # Find the entry for this var - simplest approach
-                    pass
-                return toggle
+        # Gemini
+        self.var_gemini_key = tk.StringVar()
+        self._label(ai_card, "Google Gemini API Key", 12, bold=True, color="#a855f7").pack(
+            anchor="w", padx=15, pady=(8, 2))
+        self._label(ai_card, "Get key: aistudio.google.com/app/apikey", 10, color="#475569").pack(
+            anchor="w", padx=15, pady=(0, 4))
+        key_row_gem = ctk.CTkFrame(ai_card, fg_color="transparent")
+        key_row_gem.pack(fill="x", padx=15, pady=(0, 8))
+        self._entry(key_row_gem, self.var_gemini_key, "AIza...", show="\u2022").pack(
+            side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(key_row_gem, text="\U0001f441", width=36, height=32,
+                      fg_color="#1a1a2e", hover_color="#2d2d44", text_color="#94a3b8",
+                      border_width=1, border_color="#374151",
+                      command=lambda: self._toggle_key_visibility(key_row_gem)
+                      ).pack(side="left")
 
-        ctk.CTkFrame(card, height=12, fg_color="transparent").pack()
+        ctk.CTkFrame(ai_card, height=12, fg_color="transparent").pack()
 
-        # Save button
+        # ── Ollama ──
+        ollama_card = self._card(panel)
+        ollama_card.pack(fill="x", padx=30, pady=10)
+        self._label(ollama_card, "OLLAMA (LOCAL AI)", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(ollama_card, "No API key needed \u2014 runs on your machine. Install: ollama.ai",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
+
+        ollama_row = ctk.CTkFrame(ollama_card, fg_color="transparent")
+        ollama_row.pack(fill="x", padx=15, pady=(0, 4))
+        self._label(ollama_row, "Host:", 11).pack(side="left", padx=(0, 8))
+        self.var_ollama_host = tk.StringVar(value="localhost:11434")
+        self._entry(ollama_row, self.var_ollama_host, "localhost:11434", width=220).pack(
+            side="left", padx=(0, 8))
+        self.lbl_ollama_status = self._label(ollama_row, "\u25cf not checked", 11, color="#475569")
+        self.lbl_ollama_status.pack(side="left", padx=(0, 8))
+
         ctk.CTkButton(
-            panel, text="💾 Save All Keys",
+            ollama_row, text="Check Ollama",
+            font=("Consolas", 11), height=28, width=110,
+            fg_color="#1a1a2e", hover_color="#2d2d44",
+            text_color="#94a3b8", border_width=1, border_color="#374151",
+            command=self._check_ollama
+        ).pack(side="left")
+
+        ctk.CTkFrame(ollama_card, height=12, fg_color="transparent").pack()
+
+        # ── Hunter.io ──
+        hunter_card = self._card(panel)
+        hunter_card.pack(fill="x", padx=30, pady=10)
+        self._label(hunter_card, "HUNTER.IO (OPTIONAL)", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(hunter_card, "Email finder service \u2014 finds emails by domain. Optional.",
+                    10, color="#475569").pack(anchor="w", padx=15, pady=(0, 8))
+
+        self.var_hunter_key = tk.StringVar()
+        key_row_hunter = ctk.CTkFrame(hunter_card, fg_color="transparent")
+        key_row_hunter.pack(fill="x", padx=15, pady=(0, 8))
+        self._entry(key_row_hunter, self.var_hunter_key, "your-hunter-key", show="\u2022").pack(
+            side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(key_row_hunter, text="\U0001f441", width=36, height=32,
+                      fg_color="#1a1a2e", hover_color="#2d2d44", text_color="#94a3b8",
+                      border_width=1, border_color="#374151",
+                      command=lambda: self._toggle_key_visibility(key_row_hunter)
+                      ).pack(side="left")
+        ctk.CTkFrame(hunter_card, height=12, fg_color="transparent").pack()
+
+        # ── Gmail Credentials ──
+        gmail_card = self._card(panel)
+        gmail_card.pack(fill="x", padx=30, pady=10)
+        self._label(gmail_card, "GMAIL SENDING CREDENTIALS", 11, bold=True, color="#7c3aed").pack(
+            anchor="w", padx=15, pady=(12, 4))
+        self._label(gmail_card,
+            "\u26a0\ufe0f Use a Gmail App Password (not your regular password).\n"
+            "Enable 2FA first: myaccount.google.com \u2192 Security \u2192 App Passwords",
+            11, color="#f59e0b").pack(anchor="w", padx=15, pady=(0, 8))
+
+        g_fields = ctk.CTkFrame(gmail_card, fg_color="transparent")
+        g_fields.pack(fill="x", padx=15, pady=(0, 8))
+        g_fields.grid_columnconfigure((0, 1), weight=1)
+
+        self.var_gmail = tk.StringVar()
+        self.var_gmail_pass = tk.StringVar()
+
+        self._label(g_fields, "Gmail Address", 11).grid(row=0, column=0, sticky="w")
+        self._entry(g_fields, self.var_gmail, "you@gmail.com").grid(
+            row=1, column=0, sticky="ew", padx=(0, 8), pady=(2, 8))
+        self._label(g_fields, "App Password (16 chars)", 11).grid(row=0, column=1, sticky="w")
+        self._entry(g_fields, self.var_gmail_pass, "xxxx xxxx xxxx xxxx",
+                    show="\u2022").grid(row=1, column=1, sticky="ew", pady=(2, 8))
+
+        ctk.CTkButton(
+            gmail_card, text="\U0001f50c Test Gmail Connection",
+            font=("Consolas", 12), fg_color="#1a1a2e", hover_color="#064e3b",
+            text_color="#10b981", border_width=1, border_color="#374151",
+            height=36, corner_radius=8, command=self._test_gmail
+        ).pack(anchor="w", padx=15, pady=(0, 12))
+
+        # ── Save button ──
+        ctk.CTkButton(
+            panel, text="\U0001f4be Save All Settings",
             font=("Georgia", 14, "bold"),
             fg_color="#7c3aed", hover_color="#5b21b6",
             height=46, corner_radius=10,
-            command=lambda: (self._save_config(), self._log("Keys saved.", "success"))
+            command=lambda: (self._save_config(), self._log("All settings saved.", "success"))
         ).pack(padx=30, pady=15, anchor="w")
 
-        # Security note
+        # ── Security note ──
         note_card = self._card(panel)
         note_card.pack(fill="x", padx=30, pady=10)
-        self._label(note_card, "🔒 SECURITY NOTE", 11, bold=True, color="#f59e0b").pack(
+        self._label(note_card, "\U0001f512 SECURITY NOTE", 11, bold=True, color="#f59e0b").pack(
             anchor="w", padx=15, pady=(12, 4))
         self._label(note_card,
-                    "Keys are stored in data/config.json on your machine.\n"
-                    "Never commit this file to Git. It's already in .gitignore.",
+                    "All credentials are stored locally in data/config.json on your machine.\n"
+                    "This file is in .gitignore and will never be committed to version control.",
                     11, color="#64748b").pack(anchor="w", padx=15, pady=(0, 12))
 
         return panel
 
     # ─────────────────────────── ACTIONS ───────────────────────────
+
+    def _toggle_key_visibility(self, row_frame):
+        """Toggle show/hide for the entry widget in a key row"""
+        for child in row_frame.winfo_children():
+            if isinstance(child, ctk.CTkEntry):
+                current = child.cget("show")
+                child.configure(show="" if current else "\u2022")
+                break
 
     def _add_cities(self, cities: list):
         current = self.var_custom_cities.get("1.0", "end-1c").strip()
@@ -1237,14 +1330,13 @@ class LeadHunterApp:
             return
 
         self._save_config()
-        self._stop_flag = False
 
         from core.scraper import ScraperEngine
 
         def on_progress(pct, lead):
             self.var_scrape_progress.set(pct / 100)
             self.lbl_scrape_status.configure(
-                text=f"Scraping... {pct:.0f}% — Latest: {lead.name[:40]}")
+                text=f"Scraping... {pct:.0f}% \u2014 Latest: {lead.name[:40]}")
             self._update_stats()
 
         def run():
@@ -1254,6 +1346,7 @@ class LeadHunterApp:
                     progress_callback=on_progress,
                     log_callback=self._log
                 )
+                self._scraper_engine = engine
                 new_leads = engine.run_scrape()
 
                 # Apply filters
@@ -1263,24 +1356,27 @@ class LeadHunterApp:
                     new_leads = [l for l in new_leads if l.email]
 
                 self.leads.extend(new_leads)
-                self._log(f"🎉 Done! {len(new_leads)} new leads added. Total: {len(self.leads)}", "success")
+                self._log(f"\U0001f389 Done! {len(new_leads)} new leads added. Total: {len(self.leads)}", "success")
                 self.lbl_scrape_status.configure(
-                    text=f"✅ Complete — {len(new_leads)} leads found")
+                    text=f"\u2705 Complete \u2014 {len(new_leads)} leads found")
                 self.var_scrape_progress.set(1.0)
                 self._refresh_leads_table()
                 self._update_stats()
             except Exception as e:
-                self._log(f"❌ Scrape failed: {e}", "error")
-                self.lbl_scrape_status.configure(text=f"❌ Error: {e}")
+                self._log(f"\u274c Scrape failed: {e}", "error")
+                self.lbl_scrape_status.configure(text=f"\u274c Error: {e}")
+            finally:
+                self._scraper_engine = None
 
         self.scraper_thread = threading.Thread(target=run, daemon=True)
         self.scraper_thread.start()
-        self._log(f"🚀 Starting scrape: {cfg['business_type']} in {len(cfg['cities'])} cities", "info")
+        self._log(f"\U0001f680 Starting scrape: {cfg['business_type']} in {len(cfg['cities'])} cities", "info")
         self.lbl_scrape_status.configure(text="Starting...")
 
     def _stop_scrape(self):
-        self._stop_flag = True
-        self._log("⏹ Stop requested...", "warning")
+        if self._scraper_engine:
+            self._scraper_engine.stop()
+        self._log("\u23f9 Stop requested...", "warning")
 
     # ─── AI Provider Methods ─────────────────────────────────────────
 
@@ -1292,13 +1388,13 @@ class LeadHunterApp:
         if provider == "Ollama (Local)":
             # Try to fetch live models
             models = self._get_ollama_models_list()
-            self.ollama_hint.configure(
-                text="💡 Ollama selected. Make sure 'ollama serve' is running. Pull models with: ollama pull llama3.2",
+            self.lbl_provider_hint.configure(
+                text="\U0001f4a1 Ollama selected. Make sure 'ollama serve' is running. Pull models with: ollama pull llama3.2",
                 text_color="#f59e0b"
             )
         else:
-            self.ollama_hint.configure(
-                text=f"Get API key: {info.get('key_url', '')}",
+            self.lbl_provider_hint.configure(
+                text=f"Using key from API Keys tab. Get key: {info.get('key_url', '')}",
                 text_color="#475569"
             )
 
@@ -1307,22 +1403,19 @@ class LeadHunterApp:
             recommended = info.get("recommended", models[0])
             self.var_ai_model.set(recommended)
         else:
-            self.ai_model_menu.configure(values=["(no models found — is Ollama running?)"])
-            self.var_ai_model.set("(no models found — is Ollama running?)")
-
-        key_label = info.get("key_label", "API Key:")
-        self.lbl_ai_key.configure(text=key_label + ":")
+            self.ai_model_menu.configure(values=["(no models found \u2014 is Ollama running?)"])
+            self.var_ai_model.set("(no models found \u2014 is Ollama running?)")
 
     def _get_ollama_models_list(self) -> list:
         from core.outreach import get_ollama_models
         host = self.var_ollama_host.get().strip() or "localhost:11434"
         models = get_ollama_models(host)
         if models:
-            self._log(f"🦙 Ollama: found {len(models)} local models", "success")
-            self.lbl_ollama_status.configure(text=f"● {len(models)} models", text_color="#10b981")
+            self._log(f"\U0001f999 Ollama: found {len(models)} local models", "success")
+            self.lbl_ollama_status.configure(text=f"\u25cf {len(models)} models", text_color="#10b981")
         else:
-            self._log("⚠️ Ollama: no models found. Is 'ollama serve' running?", "warning")
-            self.lbl_ollama_status.configure(text="● not running", text_color="#ef4444")
+            self._log("\u26a0\ufe0f Ollama: no models found. Is 'ollama serve' running?", "warning")
+            self.lbl_ollama_status.configure(text="\u25cf not running", text_color="#ef4444")
         return models
 
     def _refresh_ollama_models(self):
@@ -1345,51 +1438,47 @@ class LeadHunterApp:
         if running:
             models = get_ollama_models(host)
             self.lbl_ollama_status.configure(
-                text=f"● running · {len(models)} models", text_color="#10b981")
-            self._log(f"🦙 Ollama running at {host} — {len(models)} models available", "success")
+                text=f"\u25cf running \u00b7 {len(models)} models", text_color="#10b981")
+            self._log(f"\U0001f999 Ollama running at {host} \u2014 {len(models)} models available", "success")
         else:
-            self.lbl_ollama_status.configure(text="● not running", text_color="#ef4444")
-            self._log(f"❌ Ollama not reachable at {host}. Run: ollama serve", "error")
+            self.lbl_ollama_status.configure(text="\u25cf not running", text_color="#ef4444")
+            self._log(f"\u274c Ollama not reachable at {host}. Run: ollama serve", "error")
 
     def _test_ai_connection(self):
-        self._log("🧪 Testing AI connection...", "info")
+        self._log("\U0001f9ea Testing AI connection...", "info")
 
         def run():
             from core.outreach import AIPersonalizer
             p = AIPersonalizer(
                 provider=self.var_ai_provider.get(),
                 model=self.var_ai_model.get(),
-                api_key=self.var_ai_key_outreach.get().strip() or self.var_anthropic_key.get().strip(),
+                api_key=self._get_active_api_key(),
                 ollama_host=self.var_ollama_host.get().strip(),
-                your_name=self.var_your_name.get(),
-                your_website=self.var_your_website.get(),
-                your_email=self.var_your_email_sig.get(),
+                your_name=self.var_your_name.get() or "Test User",
+                your_website=self.var_your_website.get() or "example.com",
+                your_email=self.var_your_email_sig.get() or "test@example.com",
                 service_description=self.var_service_desc.get("1.0", "end-1c"),
                 tone=self.var_ai_tone.get(),
             )
             ok, msg = p.test_connection()
             if ok:
-                self._log(f"✅ AI test passed ({self.var_ai_provider.get()} / {self.var_ai_model.get()})", "success")
+                self._log(f"\u2705 AI test passed ({self.var_ai_provider.get()} / {self.var_ai_model.get()})", "success")
                 messagebox.showinfo("AI Test", msg)
             else:
-                self._log(f"❌ AI test failed: {msg}", "error")
+                self._log(f"\u274c AI test failed: {msg}", "error")
                 messagebox.showerror("AI Test Failed", msg)
 
         threading.Thread(target=run, daemon=True).start()
 
     def _get_active_api_key(self) -> str:
         """Get the right API key based on selected provider"""
-        # Check outreach panel key first, fall back to keys panel
-        outreach_key = self.var_ai_key_outreach.get().strip()
-        if outreach_key:
-            return outreach_key
         provider = self.var_ai_provider.get()
         if provider == "Claude (Anthropic)":
             return self.var_anthropic_key.get().strip()
         elif provider == "ChatGPT (OpenAI)":
-            return getattr(self, 'var_openai_key', tk.StringVar()).get().strip()
+            return self.var_openai_key.get().strip()
         elif provider == "Gemini (Google)":
-            return getattr(self, 'var_gemini_key', tk.StringVar()).get().strip()
+            return self.var_gemini_key.get().strip()
         return ""
 
     def _generate_emails(self):
@@ -1411,10 +1500,10 @@ class LeadHunterApp:
 
         if provider != "Ollama (Local)" and not api_key:
             messagebox.showerror("No API Key",
-                f"Enter your {provider} API key in the Outreach panel or API Keys panel.")
+                f"Enter your {provider} API key in the API Keys tab.")
             return
 
-        self._log(f"🤖 Generating emails with {provider} / {model} for {len(targets)} leads...", "info")
+        self._log(f"\U0001f916 Generating emails with {provider} / {model} for {len(targets)} leads...", "info")
         self.lbl_send_status.configure(text=f"Generating with {provider}...")
 
         from core.outreach import AIPersonalizer
@@ -1436,16 +1525,16 @@ class LeadHunterApp:
             for i, lead in enumerate(targets):
                 try:
                     lead.ai_email_draft = personalizer.generate_email(lead)
-                    self._log(f"  ✍️ [{provider}] Email ready for {lead.name}", "success")
+                    self._log(f"  \u270d\ufe0f [{provider}] Email ready for {lead.name}", "success")
                 except Exception as e:
-                    self._log(f"  ⚠️ Failed for {lead.name}: {e}", "warning")
+                    self._log(f"  \u26a0\ufe0f Failed for {lead.name}: {e}", "warning")
 
                 self.lbl_send_status.configure(
                     text=f"Generating... {i+1}/{len(targets)} [{provider}]")
 
-            self._log(f"✅ Done! {len(targets)} emails generated by {provider} / {model}", "success")
+            self._log(f"\u2705 Done! {len(targets)} emails generated by {provider} / {model}", "success")
             self.lbl_send_status.configure(
-                text=f"✅ {len(targets)} emails ready ({provider} / {model})")
+                text=f"\u2705 {len(targets)} emails ready ({provider} / {model})")
             self._refresh_leads_table()
 
         threading.Thread(target=run, daemon=True).start()
@@ -1457,7 +1546,7 @@ class LeadHunterApp:
 
         if not gmail or not password:
             messagebox.showerror("Missing Credentials",
-                                 "Enter your Gmail address and App Password in Outreach settings.")
+                                 "Enter your Gmail credentials in the API Keys tab.")
             return
 
         sendable = [l for l in self.leads if l.email and l.ai_email_draft and l.status == "new"]
@@ -1472,7 +1561,7 @@ class LeadHunterApp:
             return
 
         self._stop_send = False
-        self._log(f"📤 Starting send to {len(sendable)} leads...", "info")
+        self._log(f"\U0001f4e4 Starting send to {len(sendable)} leads...", "info")
 
         from core.sender import EmailSender
 
@@ -1480,7 +1569,7 @@ class LeadHunterApp:
             pct = sent / total
             self.var_send_progress.set(pct)
             self.lbl_send_status.configure(
-                text=f"Sending... {sent}/{total} — {lead.name[:30]}")
+                text=f"Sending... {sent}/{total} \u2014 {lead.name[:30]}")
 
         def run():
             sender = EmailSender(
@@ -1497,7 +1586,7 @@ class LeadHunterApp:
                 stop_flag_fn=lambda: self._stop_send
             )
             self.lbl_send_status.configure(
-                text=f"✅ Done — {stats['sent']} sent, {stats['failed']} failed")
+                text=f"\u2705 Done \u2014 {stats['sent']} sent, {stats['failed']} failed")
             self._update_stats()
             self._refresh_leads_table()
 
@@ -1505,7 +1594,7 @@ class LeadHunterApp:
 
     def _stop_send_fn(self):
         self._stop_send = True
-        self._log("⏹ Send stopped.", "warning")
+        self._log("\u23f9 Send stopped.", "warning")
 
     def _test_gmail(self):
         gmail = self.var_gmail.get().strip()
@@ -1540,11 +1629,11 @@ class LeadHunterApp:
         # Header
         header = f"{'#':<4} {'BUSINESS NAME':<35} {'CITY':<25} {'EMAIL':<35} {'SCORE':<7} {'CHATBOT':<10} {'REVIEWS':<9} {'STATUS':<10} {'EMAIL READY'}\n"
         self.leads_text.insert("end", header, "header")
-        self.leads_text.insert("end", "─" * 160 + "\n", "sep")
+        self.leads_text.insert("end", "\u2500" * 160 + "\n", "sep")
 
         for i, lead in enumerate(filtered, 1):
-            has_email_draft = "✅" if lead.ai_email_draft else "─"
-            has_bot = "⚠️ YES" if lead.has_chatbot else "no"
+            has_email_draft = "\u2705" if lead.ai_email_draft else "\u2500"
+            has_bot = "\u26a0\ufe0f YES" if lead.has_chatbot else "no"
             row = (f"{i:<4} {lead.name[:34]:<35} {lead.address[:24]:<25} "
                    f"{lead.email[:34]:<35} {lead.score:<7} {has_bot:<10} "
                    f"{lead.review_count:<9} {lead.status:<10} {has_email_draft}\n")
@@ -1555,7 +1644,7 @@ class LeadHunterApp:
             )
             self.leads_text.insert("end", row, tag)
 
-        self.leads_text.insert("end", f"\n─── {len(filtered)} leads shown ───\n", "sep")
+        self.leads_text.insert("end", f"\n\u2500\u2500\u2500 {len(filtered)} leads shown \u2500\u2500\u2500\n", "sep")
         self.leads_text.configure(state="disabled")
 
     def _export_leads(self, fmt: str = None):
@@ -1566,17 +1655,25 @@ class LeadHunterApp:
         from core.exporter import ExportManager
         em = ExportManager()
 
-        if fmt == "csv" or (fmt is None and messagebox.askyesno("Export", "Export as CSV? (No = Excel)")):
+        if fmt == "csv":
             path = em.export_csv(self.leads)
             fmt_name = "CSV"
         elif fmt == "xlsx":
             path = em.export_excel(self.leads)
             fmt_name = "Excel"
-        else:
+        elif fmt == "json":
             path = em.export_json(self.leads)
             fmt_name = "JSON"
+        else:
+            # Default: ask user
+            if messagebox.askyesno("Export", "Export as CSV? (No = Excel)"):
+                path = em.export_csv(self.leads)
+                fmt_name = "CSV"
+            else:
+                path = em.export_excel(self.leads)
+                fmt_name = "Excel"
 
-        self._log(f"💾 Exported {len(self.leads)} leads to {path}", "success")
+        self._log(f"\U0001f4be Exported {len(self.leads)} leads as {fmt_name} to {path}", "success")
         messagebox.showinfo("Exported", f"Saved {len(self.leads)} leads to:\n{path}")
 
     def _load_leads(self):
@@ -1590,7 +1687,7 @@ class LeadHunterApp:
             from core.exporter import ExportManager
             loaded = ExportManager().load_json(path)
             self.leads.extend(loaded)
-            self._log(f"📂 Loaded {len(loaded)} leads from {path}", "success")
+            self._log(f"\U0001f4c2 Loaded {len(loaded)} leads from {path}", "success")
             self._refresh_leads_table()
             self._update_stats()
         except Exception as e:
